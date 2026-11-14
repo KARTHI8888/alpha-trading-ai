@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090c12">
+  <meta name="description" content="ALPHA TRADING AI chart analysis starter interface">
+  <title>ALPHA TRADING AI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Alpha Trading AI home">
+        <span class="brand-mark">α</span>
+        <span>ALPHA <b>TRADING AI</b></span>
+      </a>
+      <label class="language-wrap">
+        <span class="sr-only" data-i18n="language">Language</span>
+        <select id="language" aria-label="Language">
+          <option value="en">English</option>
+          <option value="ta">தமிழ்</option>
+        </select>
+      </label>
+    </header>
+
+    <section class="hero">
+      <div class="eyebrow">
+        <span class="pulse"></span>
+        <span data-i18n="workspace">CHART ANALYSIS WORKSPACE</span>
+      </div>
+      <h1 data-i18n="title">Trade with a clearer view.</h1>
+      <p data-i18n="subtitle">Upload a chart screenshot to prepare an analysis request.</p>
+      <div class="notice" role="note">
+        <span class="notice-icon">!</span>
+        <p data-i18n="disclaimer">Analysis and live market data are not connected. This starter returns WAIT and is not a trading signal.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="setup-title">
+      <div class="section-heading">
+        <div>
+          <span class="step">01</span>
+          <h2 id="setup-title" data-i18n="setup">Set up your chart</h2>
+        </div>
+        <span class="tag" data-i18n="manual">MANUAL INPUT</span>
+      </div>
+      <div class="fields">
+        <label class="field">
+          <span data-i18n="market">Market</span>
+          <select id="market">
+            <option>XAUUSD</option>
+            <option>EURUSD</option>
+            <option>GBPUSD</option>
+            <option>NIFTY</option>
+            <option>BANKNIFTY</option>
+            <option>SENSEX</option>
+          </select>
+        </label>
+        <label class="field">
+          <span data-i18n="timeframe">Timeframe</span>
+          <select id="timeframe">
+            <option>5m</option>
+            <option>15m</option>
+            <option>30m</option>
+            <option>1h</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="upload-area">
+        <input id="chart-file" type="file" accept="image/png,image/jpeg,image/gif,image/webp" capture="environment" hidden>
+        <div class="upload-icon" aria-hidden="true">↥</div>
+        <h3 data-i18n="uploadTitle">Add chart screenshot</h3>
+        <p data-i18n="uploadDesc">Choose an image from Gallery or use Camera.</p>
+        <button id="choose-file" class="button secondary" type="button" data-i18n="chooseImage">Choose image</button>
+        <p id="file-name" class="file-name" aria-live="polite" data-i18n="noImage">No image selected</p>
+      </div>
+
+      <label class="field api-field">
+        <span data-i18n="apiAddress">Backend API address</span>
+        <input id="api-url" type="url" value="http://127.0.0.1:8000" autocomplete="url" spellcheck="false">
+      </label>
+      <button id="analyze" class="button primary" type="button">
+        <span data-i18n="analyze">Request placeholder analysis</span>
+        <span aria-hidden="true">↗</span>
+      </button>
+      <p id="request-message" class="request-message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="panel" aria-labelledby="result-title">
+      <div class="section-heading">
+        <div>
+          <span class="step">02</span>
+          <h2 id="result-title" data-i18n="result">Analysis result</h2>
+        </div>
+        <span id="signal" class="signal">WAIT</span>
+      </div>
+      <p id="result-note" class="result-note" data-i18n="waitNote">No verified chart analysis is available. WAIT is the safe placeholder state.</p>
+      <div class="levels">
+        <div><span data-i18n="entry">Entry Price</span><strong id="entry">—</strong></div>
+        <div><span data-i18n="stop">Stop Loss</span><strong id="stop">—</strong></div>
+        <div><span data-i18n="target1">Target 1</span><strong id="target1">—</strong></div>
+        <div><span data-i18n="target2">Target 2</span><strong id="target2">—</strong></div>
+        <div><span data-i18n="target3">Target 3</span><strong id="target3">—</strong></div>
+      </div>
+      <div class="connection-state">
+        <span class="state-dot"></span>
+        <span data-i18n="notConnected">Market data and analysis: not connected</span>
+      </div>
+    </section>
+
+    <section class="features">
+      <div class="section-heading">
+        <div>
+          <span class="step">03</span>
+          <h2 data-i18n="planned">Planned analysis tools</h2>
+        </div>
+      </div>
+      <div class="feature-list">
+        <span>RSI</span>
+        <span>MACD</span>
+        <span>VWAP</span>
+        <span>EMA 9 / 21</span>
+        <span>Supertrend</span>
+        <span>ORB</span>
+        <span>CPR</span>
+        <span data-i18n="options">CE BUY / PE BUY</span>
+      </div>
+      <p class="muted" data-i18n="plannedNote">Listed for future development; calculations and live feeds are not implemented.</p>
+    </section>
+
+    <footer>
+      <span>ALPHA TRADING AI</span>
+      <span data-i18n="footer">Educational project scaffold · No broker orders</span>
+    </footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
