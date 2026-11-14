@@ -12,6 +12,9 @@ const translations = {
     uploadTitle: "Add chart screenshot",
     uploadDesc: "Choose an image from Gallery or use Camera.",
     chooseImage: "Choose image",
+    captureChart: "Capture Chart",
+    captureReady: "Chart screenshot captured successfully.",
+    captureFailed: "Screenshot capture is unavailable. Open the Android app.",
     noImage: "No image selected",
     apiAddress: "Backend API address",
     analyze: "Request placeholder analysis",
@@ -51,6 +54,9 @@ const translations = {
     uploadTitle: "விளக்கப்படப் படத்தைச் சேர்க்கவும்",
     uploadDesc: "கேலரியிலிருந்து படத்தைத் தேர்ந்தெடுக்கவும் அல்லது கேமராவைப் பயன்படுத்தவும்.",
     chooseImage: "படத்தைத் தேர்ந்தெடுக்கவும்",
+    captureChart: "விளக்கப்படத்தைப் படம் எடுக்கவும்",
+    captureReady: "விளக்கப்படப் படம் வெற்றிகரமாகப் பதிவு செய்யப்பட்டது.",
+    captureFailed: "Screenshot வசதி கிடைக்கவில்லை. Android App-ஐ திறக்கவும்.",
     noImage: "படம் தேர்ந்தெடுக்கப்படவில்லை",
     apiAddress: "Backend API முகவரி",
     analyze: "மாதிரி பகுப்பாய்வைக் கோரவும்",
@@ -126,6 +132,62 @@ function renderLanguage() {
   if (hasAnalysisResponse) $("result-note").textContent = language.success;
   renderRequestMessage();
 }
+
+
+function updateLiveChart() {
+  const symbols = {
+    XAUUSD: "OANDA:XAUUSD",
+    EURUSD: "OANDA:EURUSD",
+    GBPUSD: "OANDA:GBPUSD",
+    NIFTY: "NSE:NIFTY",
+    BANKNIFTY: "NSE:BANKNIFTY",
+    SENSEX: "BSE:SENSEX",
+  };
+  const intervals = { "5m": "5", "15m": "15", "30m": "30", "1h": "60" };
+  const symbol = symbols[$("market").value] || "OANDA:XAUUSD";
+  const interval = intervals[$("timeframe").value] || "5";
+  $("live-chart").src =
+    `https://www.tradingview.com/widgetembed/?symbol=${encodeURIComponent(symbol)}&interval=${interval}&timezone=Asia%2FKolkata&theme=dark&style=1&locale=en&hide_top_toolbar=false&allow_symbol_change=false&save_image=false`;
+}
+
+$("market").addEventListener("change", updateLiveChart);
+$("timeframe").addEventListener("change", updateLiveChart);
+updateLiveChart();
+
+
+// Native Android chart screenshot capture
+window.onNativeChartCaptured = function (base64) {
+  try {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+
+    const blob = new Blob([bytes], { type: "image/jpeg" });
+    selectedFile = new File([blob], "chart-capture.jpg", {
+      type: "image/jpeg"
+    });
+
+    $("file-name").textContent = selectedFile.name;
+    hasAnalysisResponse = false;
+    $("result-note").textContent = currentLanguage().waitNote;
+    setRequestMessage("");
+    $("capture-message").textContent = currentLanguage().captureReady;
+  } catch (error) {
+    $("capture-message").textContent = currentLanguage().captureFailed;
+  }
+};
+
+$("capture-chart").addEventListener("click", () => {
+  if (window.AndroidBridge && window.AndroidBridge.captureChart) {
+    $("capture-message").textContent = currentLanguage().sending;
+    window.AndroidBridge.captureChart();
+  } else {
+    $("capture-message").textContent = currentLanguage().captureFailed;
+  }
+});
 
 $("language").addEventListener("change", renderLanguage);
 $("choose-file").addEventListener("click", () => $("chart-file").click());

@@ -37,6 +37,25 @@
       </div>
     </section>
 
+    <section class="panel" aria-labelledby="live-chart-title">
+      <div class="section-heading">
+        <div>
+          <span class="step">01</span>
+          <h2 id="live-chart-title">Live TradingView Chart</h2>
+        </div>
+        <span class="tag">LIVE CHART</span>
+      </div>
+      <div class="chart-frame">
+        <iframe id="live-chart" title="Live TradingView Chart"
+          src="https://www.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=5&timezone=Asia%2FKolkata&theme=dark&style=1&locale=en&hide_top_toolbar=false&allow_symbol_change=false&save_image=false"
+          loading="lazy" allowfullscreen></iframe>
+      </div>
+      <button id="capture-chart" class="button secondary" type="button" data-i18n="captureChart">
+        📸 Capture Chart
+      </button>
+      <p id="capture-message" class="muted">Chart screenshot capture will be connected next.</p>
+    </section>
+
     <section class="panel" aria-labelledby="setup-title">
       <div class="section-heading">
         <div>
