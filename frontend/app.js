@@ -171,6 +171,9 @@ window.onNativeChartCaptured = function (base64) {
     });
 
     $("file-name").textContent = selectedFile.name;
+    const preview = $("image-preview");
+    preview.src = URL.createObjectURL(selectedFile);
+    preview.hidden = false;
     hasAnalysisResponse = false;
     $("result-note").textContent = currentLanguage().waitNote;
     setRequestMessage("");
@@ -197,6 +200,14 @@ $("chart-file").addEventListener("change", (event) => {
   $("file-name").textContent = selectedFile
     ? selectedFile.name
     : currentLanguage().noImage;
+  const preview = $("image-preview");
+  if (selectedFile) {
+    preview.src = URL.createObjectURL(selectedFile);
+    preview.hidden = false;
+  } else {
+    preview.removeAttribute("src");
+    preview.hidden = true;
+  }
   hasAnalysisResponse = false;
   $("result-note").textContent = currentLanguage().waitNote;
   setRequestMessage("");
