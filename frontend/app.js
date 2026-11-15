@@ -173,7 +173,7 @@ window.onNativeChartCaptured = function (base64) {
     $("file-name").textContent = selectedFile.name;
     const preview = $("image-preview");
     preview.src = URL.createObjectURL(selectedFile);
-    preview.hidden = false;
+    preview.hidden = false; preview.style.display = "block";
     hasAnalysisResponse = false;
     $("result-note").textContent = currentLanguage().waitNote;
     setRequestMessage("");
@@ -203,10 +203,10 @@ $("chart-file").addEventListener("change", (event) => {
   const preview = $("image-preview");
   if (selectedFile) {
     preview.src = URL.createObjectURL(selectedFile);
-    preview.hidden = false;
+    preview.hidden = false; preview.style.display = "block";
   } else {
     preview.removeAttribute("src");
-    preview.hidden = true;
+    preview.hidden = true; preview.style.display = "none";
   }
   hasAnalysisResponse = false;
   $("result-note").textContent = currentLanguage().waitNote;
