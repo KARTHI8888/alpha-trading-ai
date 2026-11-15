@@ -124,6 +124,22 @@
         <div><span data-i18n="target2">Target 2</span><strong id="target2">—</strong></div>
         <div><span data-i18n="target3">Target 3</span><strong id="target3">—</strong></div>
       </div>
+      <div class="live-indicators" aria-live="polite">
+        <h3>Live Market Indicators</h3>
+        <div class="indicator-status">
+          <span>Data Status</span>
+          <strong id="market-status">NOT CHECKED</strong>
+        </div>
+        <div class="indicator-grid">
+          <div><span>EMA 9</span><strong id="ema9">—</strong></div>
+          <div><span>EMA 21</span><strong id="ema21">—</strong></div>
+          <div><span>RSI 14</span><strong id="rsi14">—</strong></div>
+          <div><span>MACD</span><strong id="macd">—</strong></div>
+          <div><span>MACD Signal</span><strong id="macd-signal">—</strong></div>
+          <div><span>VWAP</span><strong id="vwap">—</strong></div>
+        </div>
+        <p id="market-data-note" class="muted">Waiting for market data...</p>
+      </div>
       <div class="connection-state">
         <span class="state-dot"></span>
         <span data-i18n="notConnected">Market data and analysis: not connected</span>

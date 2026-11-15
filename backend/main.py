@@ -223,3 +223,114 @@ async def analyze_screenshot(
             "WAIT is a safe placeholder, not a trading signal."
         ),
     )
+
+
+class CandleInput(BaseModel):
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+
+
+class IndicatorRequest(BaseModel):
+    candles: list[CandleInput]
+
+
+@app.post("/indicators")
+def indicators_endpoint(payload: IndicatorRequest):
+    """Calculate technical indicators from user-supplied candle data."""
+    from backend.indicators import calculate_indicators
+
+    try:
+        candles = [candle.model_dump() for candle in payload.candles]
+        result = calculate_indicators(candles)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return {
+        "signal": "WAIT",
+        "indicators": result,
+        "message": "Indicator calculations only. No live market data or trading signal is connected.",
+    }
+
+
+@app.get("/live-indicators")
+def live_indicators(symbol: str = "XAUUSD", interval: str = "5m"):
+    """Fetch public OHLC data and calculate indicators; never invent a trade signal."""
+    import json
+    from datetime import datetime, timezone
+    from urllib.request import Request, urlopen
+
+    from backend.indicators import calculate_indicators
+
+    allowed_symbols = {"XAUUSD", "EURUSD", "GBPUSD"}
+    allowed_intervals = {"5m", "15m", "30m", "1h"}
+
+    symbol = symbol.upper()
+    if symbol not in allowed_symbols:
+        raise HTTPException(status_code=400, detail="Unsupported symbol.")
+    if interval not in allowed_intervals:
+        raise HTTPException(status_code=400, detail="Unsupported interval.")
+
+    url = (
+        f"https://biquote.io/api/{symbol}/ohlc"
+        f"?interval={interval}&limit=50"
+    )
+    request = Request(url, headers={"User-Agent": "ALPHA-TRADING-AI/1.0"})
+
+    try:
+        with urlopen(request, timeout=15) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        bars = payload.get("bars", [])
+        if len(bars) < 35:
+            raise HTTPException(
+                status_code=503,
+                detail="Not enough candle data to calculate indicators.",
+            )
+
+        bars = sorted(bars, key=lambda bar: bar["openTime"])
+        candles = [
+            {
+                "open": float(bar["open"]),
+                "high": float(bar["high"]),
+                "low": float(bar["low"]),
+                "close": float(bar["close"]),
+                "volume": float(bar.get("tickVolume", bar.get("volume", 0))),
+            }
+            for bar in bars
+        ]
+        indicators = calculate_indicators(candles)
+        latest_time = datetime.fromisoformat(
+            bars[-1]["openTime"].replace("Z", "+00:00")
+        )
+        age_minutes = (
+            datetime.now(timezone.utc) - latest_time
+        ).total_seconds() / 60
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not retrieve valid market data.",
+        ) from exc
+
+    interval_minutes = {"5m": 5, "15m": 15, "30m": 30, "1h": 60}[interval]
+    is_fresh = 0 <= age_minutes <= interval_minutes * 3
+
+    return {
+        "symbol": symbol,
+        "interval": interval,
+        "status": "FRESH" if is_fresh else "STALE",
+        "latest_candle": bars[-1]["openTime"],
+        "age_minutes": round(age_minutes, 1),
+        "candles_received": len(candles),
+        "signal": "WAIT",
+        "indicators": indicators,
+        "message": (
+            "Data freshness check passed. Indicator values only; no validated trading signal."
+            if is_fresh
+            else "Market data is stale. WAIT; do not use these values as a live signal."
+        ),
+    }

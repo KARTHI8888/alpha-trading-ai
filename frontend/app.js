@@ -150,10 +150,60 @@ function updateLiveChart() {
     `https://www.tradingview.com/widgetembed/?symbol=${encodeURIComponent(symbol)}&interval=${interval}&timezone=Asia%2FKolkata&theme=dark&style=1&locale=en&hide_top_toolbar=false&allow_symbol_change=false&save_image=false`;
 }
 
-$("market").addEventListener("change", updateLiveChart);
-$("timeframe").addEventListener("change", updateLiveChart);
-updateLiveChart();
+async function loadLiveIndicators() {
+  const status = $("market-status");
+  const note = $("market-data-note");
+  const ids = ["ema9", "ema21", "rsi14", "macd", "macd-signal", "vwap"];
+  const symbol = $("market").value;
+  const interval = $("timeframe").value;
 
+  const supported = ["XAUUSD", "EURUSD", "GBPUSD"];
+  if (!supported.includes(symbol)) {
+    status.textContent = "UNSUPPORTED";
+    note.textContent = "Live indicator data is not yet supported for " + symbol + ".";
+    ids.forEach((id) => { $(id).textContent = "—"; });
+    return;
+  }
+
+  const base = $("api-url").value.trim().replace(/\/+$/, "");
+  if (!base) {
+    status.textContent = "ERROR";
+    note.textContent = "Enter the backend API address.";
+    return;
+  }
+
+  status.textContent = "LOADING";
+  note.textContent = "Fetching market candles...";
+  try {
+    const query = new URLSearchParams({ symbol, interval });
+    const response = await fetch(`${base}/live-indicators?${query}`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || `HTTP ${response.status}`);
+    }
+
+    status.textContent = data.status;
+    const values = data.indicators || {};
+    for (const id of ids) {
+      const value = values[id];
+      $(id).textContent =
+        Number.isFinite(value) ? value.toFixed(4) : "—";
+    }
+
+    note.textContent =
+      `${data.message} Latest candle: ${data.latest_candle || "unknown"} · Age: ${data.age_minutes ?? "?"} min`;
+  } catch (error) {
+    status.textContent = "ERROR";
+    note.textContent = error.message || "Could not load market indicators.";
+    ids.forEach((id) => { $(id).textContent = "—"; });
+  }
+}
+
+$("market").addEventListener("change", () => { updateLiveChart(); loadLiveIndicators(); });
+$("timeframe").addEventListener("change", () => { updateLiveChart(); loadLiveIndicators(); });
+updateLiveChart();
+loadLiveIndicators();
 
 // Native Android chart screenshot capture
 window.onNativeChartCaptured = function (base64) {
