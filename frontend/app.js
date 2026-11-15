@@ -200,14 +200,31 @@ $("chart-file").addEventListener("change", (event) => {
   $("file-name").textContent = selectedFile
     ? selectedFile.name
     : currentLanguage().noImage;
+
   const preview = $("image-preview");
+
   if (selectedFile) {
-    preview.src = URL.createObjectURL(selectedFile);
-    preview.hidden = false; preview.style.display = "block";
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      preview.src = reader.result;
+      preview.hidden = false;
+      preview.style.display = "block";
+      preview.style.visibility = "visible";
+      preview.style.opacity = "1";
+    };
+
+    reader.onerror = () => {
+      $("file-name").textContent = "Image preview failed";
+    };
+
+    reader.readAsDataURL(selectedFile);
   } else {
     preview.removeAttribute("src");
-    preview.hidden = true; preview.style.display = "none";
+    preview.hidden = true;
+    preview.style.display = "none";
   }
+
   hasAnalysisResponse = false;
   $("result-note").textContent = currentLanguage().waitNote;
   setRequestMessage("");
