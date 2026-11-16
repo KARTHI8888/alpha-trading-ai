@@ -28,7 +28,7 @@ MIME_FORMATS = {
 
 origins_setting = os.getenv(
     "ALLOWED_ORIGINS",
-    "http://127.0.0.1:8080,http://localhost:8080",
+    "null,http://127.0.0.1:8080,http://localhost:8080",
 )
 allowed_origins = [
     origin.strip() for origin in origins_setting.split(",") if origin.strip()

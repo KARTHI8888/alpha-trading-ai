@@ -186,7 +186,7 @@ async function loadLiveIndicators() {
     status.textContent = data.status;
     const values = data.indicators || {};
     for (const id of ids) {
-      const value = values[id];
+      const value = id === "macd-signal" ? values.macd_signal : values[id];
       $(id).textContent =
         Number.isFinite(value) ? value.toFixed(4) : "—";
     }
