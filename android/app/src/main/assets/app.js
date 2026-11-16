@@ -152,6 +152,8 @@ function updateLiveChart() {
     `https://www.tradingview.com/widgetembed/?symbol=${encodeURIComponent(symbol)}&interval=${interval}&timezone=Asia%2FKolkata&theme=dark&style=1&locale=en&hide_top_toolbar=false&allow_symbol_change=false&save_image=false`;
 }
 
+async function loadBackendHealth() { const base = $("api-url").value.trim().replace(/[/]+$/, ""); try { const response = await fetch(`${base}/health`); const data = await response.json(); $("local-ai-status").textContent = response.ok && data.analysis_connected ? "CONNECTED" : "DISCONNECTED"; $("broker-status").textContent = data.broker_orders_enabled ? "ENABLED" : "DISABLED"; } catch (error) { $("local-ai-status").textContent = "DISCONNECTED"; $("broker-status").textContent = "DISABLED"; } }
+
 async function loadLiveIndicators() {
   const status = $("market-status");
   const note = $("market-data-note");
@@ -162,6 +164,7 @@ async function loadLiveIndicators() {
   const supported = ["XAUUSD", "EURUSD", "GBPUSD"];
   if (!supported.includes(symbol)) {
     status.textContent = "UNSUPPORTED";
+    $("live-ai-status").textContent = "UNSUPPORTED";
     note.textContent = "Live indicator data is not yet supported for " + symbol + ".";
     ids.forEach((id) => { $(id).textContent = "—"; });
     return;
@@ -170,11 +173,13 @@ async function loadLiveIndicators() {
   const base = $("api-url").value.trim().replace(/\/+$/, "");
   if (!base) {
     status.textContent = "ERROR";
+    $("live-ai-status").textContent = "ERROR";
     note.textContent = "Enter the backend API address.";
     return;
   }
 
   status.textContent = "LOADING";
+  $("live-ai-status").textContent = "LOADING";
   note.textContent = "Fetching market candles...";
   try {
     const query = new URLSearchParams({ symbol, interval });
@@ -186,6 +191,7 @@ async function loadLiveIndicators() {
     }
 
     status.textContent = data.status;
+    $("live-ai-status").textContent = data.status;
     const values = data.indicators || {};
     for (const id of ids) {
       const value = id === "macd-signal" ? values.macd_signal : values[id];
@@ -197,6 +203,7 @@ async function loadLiveIndicators() {
       `${data.message} Latest candle: ${data.latest_candle || "unknown"} · Age: ${data.age_minutes ?? "?"} min`;
   } catch (error) {
     status.textContent = "ERROR";
+    $("live-ai-status").textContent = "ERROR";
     note.textContent = error.message || "Could not load market indicators.";
     ids.forEach((id) => { $(id).textContent = "—"; });
   }
@@ -205,6 +212,7 @@ async function loadLiveIndicators() {
 $("market").addEventListener("change", () => { updateLiveChart(); loadLiveIndicators(); });
 $("timeframe").addEventListener("change", () => { updateLiveChart(); loadLiveIndicators(); });
 updateLiveChart();
+loadBackendHealth();
 loadLiveIndicators();
 
 // Native Android chart screenshot capture

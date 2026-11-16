@@ -71,8 +71,8 @@ class Timeframe(str, Enum):
 
 class HealthResponse(BaseModel):
     status: Literal["ok"]
-    analysis_connected: Literal[False]
-    market_data_connected: Literal[False]
+    analysis_connected: bool = False
+    market_data_connected: bool = False
     broker_orders_enabled: Literal[False]
 
 
@@ -87,7 +87,7 @@ class AnalysisResponse(BaseModel):
     target3: None = None
     analysis_connected: bool = False
     vision_description: str | None = None
-    market_data_connected: Literal[False] = False
+    market_data_connected: bool = False
     broker_orders_enabled: Literal[False] = False
     message: str
 
@@ -207,10 +207,14 @@ def run_local_vision(image_data: bytes) -> str:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    """Report API health without implying trading integrations are available."""
+    """Report local vision availability without implying trading signals."""
+    root = Path(__file__).resolve().parent.parent
+    model = root / "models" / "SmolVLM-500M-Instruct-Q8_0.gguf"
+    projector = root / "models" / "mmproj-SmolVLM-500M-Instruct-Q8_0.gguf"
+    analysis_ready = shutil.which("llama-mtmd-cli") is not None and model.is_file() and projector.is_file()
     return HealthResponse(
         status="ok",
-        analysis_connected=False,
+        analysis_connected=analysis_ready,
         market_data_connected=False,
         broker_orders_enabled=False,
     )
