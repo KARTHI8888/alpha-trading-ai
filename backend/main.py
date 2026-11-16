@@ -1,7 +1,12 @@
 """Safe API scaffold: no market data, analysis, persistence, or broker orders."""
 
 import os
+import asyncio
+import shutil
+import subprocess
+import tempfile
 import warnings
+from pathlib import Path
 from enum import Enum
 from io import BytesIO
 from typing import Literal
@@ -80,7 +85,8 @@ class AnalysisResponse(BaseModel):
     target1: None = None
     target2: None = None
     target3: None = None
-    analysis_connected: Literal[False] = False
+    analysis_connected: bool = False
+    vision_description: str | None = None
     market_data_connected: Literal[False] = False
     broker_orders_enabled: Literal[False] = False
     message: str
@@ -159,6 +165,46 @@ def validate_decoded_image(data: bytes, content_type: str) -> None:
         ) from exc
 
 
+def run_local_vision(image_data: bytes) -> str:
+    """Describe an uploaded chart using the local SmolVLM model."""
+    root = Path(__file__).resolve().parent.parent
+    model = root / "models" / "SmolVLM-500M-Instruct-Q8_0.gguf"
+    projector = root / "models" / "mmproj-SmolVLM-500M-Instruct-Q8_0.gguf"
+    executable = shutil.which("llama-mtmd-cli")
+    if not executable or not model.is_file() or not projector.is_file():
+        raise HTTPException(status_code=503, detail="Local vision model files or runtime unavailable.")
+    temp_path = None
+    try:
+        with Image.open(BytesIO(image_data)) as image:
+            image.seek(0)
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp:
+                temp_path = temp.name
+            image.convert("RGB").save(temp_path, format="PNG")
+        prompt = ("Describe visible chart facts only: candle colors and overall "
+                  "left-to-right direction if clear. Do not invent prices, "
+                  "indicators, entry, stop loss, targets, or trading advice. "
+                  "If unclear, say UNCLEAR.")
+        result = subprocess.run(
+            [executable, "-m", str(model), "--mmproj", str(projector),
+             "--image", temp_path, "-p", prompt, "-c", "2048", "-n", "120",
+             "-t", "4", "--no-warmup", "--temp", "0", "--top-k", "1",
+             "--seed", "42"],
+            capture_output=True, text=True, timeout=180,
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=503, detail="Local vision inference failed.")
+        lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        if not lines:
+            raise HTTPException(status_code=503, detail="Vision model returned no description.")
+        return lines[-1][:1000]
+    except subprocess.TimeoutExpired as exc:
+        raise HTTPException(status_code=504, detail="Vision analysis timed out.") from exc
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.unlink(temp_path)
+
+
+
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     """Report API health without implying trading integrations are available."""
@@ -206,8 +252,11 @@ async def analyze_screenshot(
     if not image_data:
         raise HTTPException(status_code=400, detail="Uploaded image is empty.")
 
-    validate_decoded_image(bytes(image_data), content_type)
+    image_bytes = bytes(image_data)
+    validate_decoded_image(image_bytes, content_type)
     image_data.clear()
+    vision_description = await asyncio.to_thread(run_local_vision, image_bytes)
+    del image_bytes
 
     return AnalysisResponse(
         signal="WAIT",
@@ -218,10 +267,9 @@ async def analyze_screenshot(
         target1=None,
         target2=None,
         target3=None,
-        message=(
-            "Screenshot analysis and live market data are not implemented. "
-            "WAIT is a safe placeholder, not a trading signal."
-        ),
+        analysis_connected=True,
+        vision_description=vision_description,
+        message="Local vision description only. Signal remains WAIT; no validated trading signal is provided.",
     )
 
 

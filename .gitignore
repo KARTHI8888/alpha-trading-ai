@@ -20,3 +20,7 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Local AI models and backups
+models/
+backend/main.py.backup

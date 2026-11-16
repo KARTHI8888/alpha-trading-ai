@@ -33,8 +33,9 @@ const translations = {
     selectImage: "Select a chart image first.",
     unsupportedImage: "Choose a PNG, JPEG, GIF, or WebP image.",
     missingApi: "Enter the backend API address.",
-    sending: "Contacting placeholder API…",
-    success: "Placeholder response received; no actual analysis was performed.",
+    sending: "Running local SmolVLM vision model…",
+    success: "Local AI image processing completed. Signal remains WAIT.",
+    visionResult: "Local AI image description:",
     error400: "The image is empty or the request is invalid (HTTP 400).",
     error413: "The image exceeds the 10 MiB upload or safe image-decoding limit (HTTP 413).",
     error415: "Unsupported or invalid image. Use PNG, JPEG, GIF, or WebP (HTTP 415).",
@@ -75,8 +76,9 @@ const translations = {
     selectImage: "முதலில் விளக்கப்படப் படத்தைத் தேர்ந்தெடுக்கவும்.",
     unsupportedImage: "PNG, JPEG, GIF அல்லது WebP படத்தைத் தேர்ந்தெடுக்கவும்.",
     missingApi: "Backend API முகவரியை உள்ளிடவும்.",
-    sending: "மாதிரி API-யுடன் இணைக்கிறது…",
-    success: "மாதிரி பதில் கிடைத்தது; உண்மையான பகுப்பாய்வு செய்யப்படவில்லை.",
+    sending: "Local SmolVLM AI படத்தைப் பகுப்பாய்வு செய்கிறது…",
+    success: "Local AI படச் செயலாக்கம் முடிந்தது. Signal WAIT நிலையில் உள்ளது.",
+    visionResult: "Local AI பட விளக்கம்:",
     error400: "படம் காலியாக உள்ளது அல்லது கோரிக்கை தவறானது (HTTP 400).",
     error413: "படம் 10 MiB பதிவேற்ற அல்லது பாதுகாப்பான பட-decoding வரம்பை மீறுகிறது (HTTP 413).",
     error415: "ஆதரிக்கப்படாத அல்லது தவறான படம். PNG, JPEG, GIF அல்லது WebP பயன்படுத்தவும் (HTTP 415).",
@@ -327,14 +329,14 @@ $("analyze").addEventListener("click", async () => {
       return;
     }
 
-    await response.json();
-    $("signal").textContent = "WAIT";
+    const data = await response.json();
+    $("signal").textContent = data.signal || "WAIT";
     for (const id of ["entry", "stop", "target1", "target2", "target3"]) {
       $(id).textContent = "—";
     }
 
     hasAnalysisResponse = true;
-    $("result-note").textContent = currentLanguage().success;
+    $("result-note").textContent = data.vision_description ? `${currentLanguage().visionResult} ${data.vision_description}` : (data.message || currentLanguage().success);
     setRequestMessage("success");
   } catch {
     setRequestMessage("networkError");
