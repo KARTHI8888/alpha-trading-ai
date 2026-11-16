@@ -157,16 +157,23 @@ async function loadBackendHealth() { const base = $("api-url").value.trim().repl
 async function loadLiveIndicators() {
   const status = $("market-status");
   const note = $("market-data-note");
-  const ids = ["ema9", "ema21", "rsi14", "macd", "macd-signal", "vwap"];
+  const indicatorIds = ["ema9", "ema21", "rsi14", "macd", "macd-signal", "vwap"];
+  const resultIds = ["entry", "stop", "target1", "target2", "target3"];
   const symbol = $("market").value;
   const interval = $("timeframe").value;
 
-  const supported = ["XAUUSD", "EURUSD", "GBPUSD"];
-  if (!supported.includes(symbol)) {
+  function resetResult(message = "WAIT") {
+    $("signal").textContent = "WAIT";
+    resultIds.forEach((id) => { $(id).textContent = "—"; });
+    $("result-note").textContent = message;
+  }
+
+  if (!["XAUUSD", "EURUSD", "GBPUSD"].includes(symbol)) {
     status.textContent = "UNSUPPORTED";
     $("live-ai-status").textContent = "UNSUPPORTED";
-    note.textContent = "Live indicator data is not yet supported for " + symbol + ".";
-    ids.forEach((id) => { $(id).textContent = "—"; });
+    note.textContent = "Live analysis is not supported for " + symbol + ".";
+    indicatorIds.forEach((id) => { $(id).textContent = "—"; });
+    resetResult("WAIT — Market not supported by the live analysis API.");
     return;
   }
 
@@ -175,37 +182,62 @@ async function loadLiveIndicators() {
     status.textContent = "ERROR";
     $("live-ai-status").textContent = "ERROR";
     note.textContent = "Enter the backend API address.";
+    resetResult("WAIT — Backend API address is missing.");
     return;
   }
 
   status.textContent = "LOADING";
   $("live-ai-status").textContent = "LOADING";
-  note.textContent = "Fetching market candles...";
+  note.textContent = "Fetching live market analysis...";
+  resetResult("Loading experimental rule-based analysis...");
+
   try {
     const query = new URLSearchParams({ symbol, interval });
-    const response = await fetch(`${base}/live-indicators?${query}`);
+    const response = await fetch(`${base}/technical-analysis?${query}`);
     const data = await response.json();
 
     if (!response.ok) {
       throw new Error(data.detail || `HTTP ${response.status}`);
     }
 
-    status.textContent = data.status;
-    $("live-ai-status").textContent = data.status;
     const values = data.indicators || {};
-    for (const id of ids) {
+    const levels = data.levels || {};
+
+    status.textContent = data.status || "UNKNOWN";
+    $("live-ai-status").textContent = data.status || "UNKNOWN";
+
+    for (const id of indicatorIds) {
       const value = id === "macd-signal" ? values.macd_signal : values[id];
-      $(id).textContent =
-        Number.isFinite(value) ? value.toFixed(4) : "—";
+      $(id).textContent = Number.isFinite(value) ? value.toFixed(4) : "—";
     }
 
+    const validSignal = data.status === "FRESH" &&
+      ["BUY", "SELL"].includes(data.signal);
+
+    $("signal").textContent = validSignal ? data.signal : "WAIT";
+
+    for (const id of resultIds) {
+      const value = validSignal ? data[id] : null;
+      $(id).textContent = Number.isFinite(value) ? value.toFixed(4) : "—";
+    }
+
+    const levelText = Number.isFinite(levels.atr14)
+      ? ` · ATR: ${levels.atr14.toFixed(4)}` : "";
+
+    $("result-note").textContent =
+      validSignal
+        ? `${data.message} Experimental signal only. Verify independently.`
+        : `${data.message || "No confirmed setup."} Signal: WAIT.`;
+
     note.textContent =
-      `${data.message} Latest candle: ${data.latest_candle || "unknown"} · Age: ${data.age_minutes ?? "?"} min`;
+      `Latest candle: ${data.latest_candle || "unknown"} · Age: ${data.age_minutes ?? "?"} min${levelText}`;
+
   } catch (error) {
     status.textContent = "ERROR";
     $("live-ai-status").textContent = "ERROR";
-    note.textContent = error.message || "Could not load market indicators.";
-    ids.forEach((id) => { $(id).textContent = "—"; });
+    note.textContent = error.message || "Could not load technical analysis.";
+    indicatorIds.forEach((id) => { $(id).textContent = "—"; });
+    resetResult("WAIT — Technical analysis could not be loaded.");
   }
 }
 

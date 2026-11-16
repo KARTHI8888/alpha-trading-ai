@@ -109,3 +109,90 @@ def calculate_indicators(candles: list[dict]) -> dict:
         "macd_signal": round(macd_signal[-1], 4) if macd_signal[-1] is not None else None,
         "vwap": round(vwap, 4) if vwap is not None else None,
     }
+
+
+def atr(candles: list[dict], period: int = 14) -> Optional[float]:
+    """Calculate Wilder's ATR from OHLC candles."""
+    if len(candles) <= period:
+        return None
+    true_ranges = []
+    for i in range(1, len(candles)):
+        high = float(candles[i]["high"])
+        low = float(candles[i]["low"])
+        previous_close = float(candles[i - 1]["close"])
+        true_ranges.append(max(high - low, abs(high - previous_close), abs(low - previous_close)))
+    current = sum(true_ranges[:period]) / period
+    for value in true_ranges[period:]:
+        current = ((current * (period - 1)) + value) / period
+    return round(current, 4)
+
+
+def calculate_market_levels(candles: list[dict]) -> dict:
+    """Return ATR and recent support/resistance reference levels."""
+    if len(candles) < 20:
+        raise ValueError("At least 20 candles are required.")
+    recent = candles[-20:]
+    return {
+        "atr14": atr(candles),
+        "support": round(min(float(c["low"]) for c in recent), 4),
+        "resistance": round(max(float(c["high"]) for c in recent), 4),
+    }
+
+
+def analyze_candles(candles: list[dict]) -> dict:
+    """Experimental rule-based analysis; not a guaranteed trading signal."""
+    if len(candles) < 35:
+        raise ValueError("At least 35 candles are required.")
+
+    values = calculate_indicators(candles)
+    levels = calculate_market_levels(candles)
+    entry = float(candles[-1]["close"])
+    atr_value = levels["atr14"]
+
+    result = {
+        "signal": "WAIT",
+        "entry": None,
+        "stop": None,
+        "target1": None,
+        "target2": None,
+        "target3": None,
+        "indicators": values,
+        "levels": levels,
+        "message": "Conditions are not sufficiently aligned. WAIT.",
+    }
+
+    required = [
+        values["ema9"], values["ema21"], values["rsi14"],
+        values["macd"], values["macd_signal"], values["vwap"], atr_value,
+    ]
+    if any(value is None for value in required) or atr_value <= 0:
+        return result
+
+    buy = (
+        values["ema9"] > values["ema21"]
+        and 52 <= values["rsi14"] <= 68
+        and values["macd"] > values["macd_signal"]
+        and entry > values["vwap"]
+    )
+    sell = (
+        values["ema9"] < values["ema21"]
+        and 32 <= values["rsi14"] <= 48
+        and values["macd"] < values["macd_signal"]
+        and entry < values["vwap"]
+    )
+
+    if not (buy or sell):
+        return result
+
+    risk = atr_value * 1.5
+    direction = 1 if buy else -1
+    result.update({
+        "signal": "BUY" if buy else "SELL",
+        "entry": round(entry, 4),
+        "stop": round(entry - direction * risk, 4),
+        "target1": round(entry + direction * risk, 4),
+        "target2": round(entry + direction * risk * 2, 4),
+        "target3": round(entry + direction * risk * 3, 4),
+        "message": "Experimental rule-based setup. Verify independently; not financial advice.",
+    })
+    return result

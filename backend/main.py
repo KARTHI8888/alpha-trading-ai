@@ -386,3 +386,65 @@ def live_indicators(symbol: str = "XAUUSD", interval: str = "5m"):
             else "Market data is stale. WAIT; do not use these values as a live signal."
         ),
     }
+
+
+@app.get("/technical-analysis")
+def technical_analysis(symbol: str = "XAUUSD", interval: str = "5m"):
+    """Experimental rule-based analysis using public OHLC data."""
+    import json
+    from datetime import datetime, timezone
+    from urllib.request import Request, urlopen
+    from backend.indicators import analyze_candles
+
+    symbol = symbol.upper()
+    allowed_symbols = {"XAUUSD", "EURUSD", "GBPUSD"}
+    allowed_intervals = {"5m", "15m", "30m", "1h"}
+
+    if symbol not in allowed_symbols or interval not in allowed_intervals:
+        raise HTTPException(status_code=400, detail="Unsupported symbol or interval.")
+
+    url = f"https://biquote.io/api/{symbol}/ohlc?interval={interval}&limit=50"
+    request = Request(url, headers={"User-Agent": "ALPHA-TRADING-AI/1.0"})
+
+    try:
+        with urlopen(request, timeout=15) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+
+        bars = sorted(payload.get("bars", []), key=lambda bar: bar["openTime"])
+        if len(bars) < 35:
+            raise HTTPException(status_code=503, detail="Not enough candle data.")
+
+        candles = [{
+            "open": float(b["open"]),
+            "high": float(b["high"]),
+            "low": float(b["low"]),
+            "close": float(b["close"]),
+            "volume": float(b.get("tickVolume", b.get("volume", 0))),
+        } for b in bars]
+
+        latest = datetime.fromisoformat(bars[-1]["openTime"].replace("Z", "+00:00"))
+        age = (datetime.now(timezone.utc) - latest).total_seconds() / 60
+        interval_minutes = {"5m": 5, "15m": 15, "30m": 30, "1h": 60}[interval]
+        fresh = 0 <= age <= interval_minutes * 3
+
+        result = analyze_candles(candles)
+        if not fresh:
+            result.update({
+                "signal": "WAIT", "entry": None, "stop": None,
+                "target1": None, "target2": None, "target3": None,
+                "message": "Market data is stale. WAIT.",
+            })
+
+        return {
+            "symbol": symbol,
+            "interval": interval,
+            "status": "FRESH" if fresh else "STALE",
+            "latest_candle": bars[-1]["openTime"],
+            "age_minutes": round(age, 1),
+            **result,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Technical analysis failed.") from exc
