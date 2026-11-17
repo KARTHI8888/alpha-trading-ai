@@ -281,8 +281,23 @@ window.onNativeChartCaptured = function (base64) {
 
     $("file-name").textContent = selectedFile.name;
     const preview = $("image-preview");
-    preview.src = URL.createObjectURL(selectedFile);
-    preview.hidden = false; preview.style.display = "block";
+    const imageUrl = URL.createObjectURL(selectedFile);
+    preview.onload = () => {
+      preview.hidden = false;
+      preview.style.display = "block";
+      preview.style.visibility = "visible";
+      preview.style.opacity = "1";
+      $("capture-message").textContent =
+        currentLanguage().captureReady + " (" + preview.naturalWidth + "×" + preview.naturalHeight + ")";
+    };
+    preview.onerror = () => {
+      $("capture-message").textContent = "Captured image preview could not be displayed.";
+    };
+    preview.src = imageUrl;
+    preview.hidden = false;
+    preview.style.display = "block";
+    preview.style.visibility = "visible";
+    preview.style.opacity = "1";
     hasAnalysisResponse = false;
     $("result-note").textContent = currentLanguage().waitNote;
     setRequestMessage("");
