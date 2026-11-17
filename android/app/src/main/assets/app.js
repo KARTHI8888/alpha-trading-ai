@@ -141,9 +141,6 @@ function updateLiveChart() {
     XAUUSD: "OANDA:XAUUSD",
     EURUSD: "OANDA:EURUSD",
     GBPUSD: "OANDA:GBPUSD",
-    NIFTY: "NSE:NIFTY",
-    BANKNIFTY: "NSE:BANKNIFTY",
-    SENSEX: "BSE:SENSEX",
   };
   const intervals = { "5m": "5", "15m": "15", "30m": "30", "1h": "60" };
   const symbol = symbols[$("market").value] || "OANDA:XAUUSD";
@@ -202,6 +199,23 @@ async function loadLiveIndicators() {
 
     const values = data.indicators || {};
     const levels = data.levels || {};
+    const st = data.supertrend || {};
+    const orb = data.orb || {};
+    const cpr = data.cpr || {};
+
+    const formatValue = (value) =>
+      Number.isFinite(value) ? value.toFixed(4) : "—";
+
+    $("supertrend").textContent = formatValue(st.value);
+    $("supertrend-trend").textContent = st.trend || "WAIT";
+
+    $("orb-high").textContent = formatValue(orb.high);
+    $("orb-low").textContent = formatValue(orb.low);
+    $("orb-breakout").textContent = orb.breakout || orb.status || "NOT AVAILABLE";
+
+    $("cpr-pivot").textContent = formatValue(cpr.pivot);
+    $("cpr-tc").textContent = formatValue(cpr.tc);
+    $("cpr-bc").textContent = formatValue(cpr.bc);
 
     status.textContent = data.status || "UNKNOWN";
     $("live-ai-status").textContent = data.status || "UNKNOWN";
@@ -237,6 +251,9 @@ async function loadLiveIndicators() {
     $("live-ai-status").textContent = "ERROR";
     note.textContent = error.message || "Could not load technical analysis.";
     indicatorIds.forEach((id) => { $(id).textContent = "—"; });
+    ["supertrend", "supertrend-trend", "orb-high", "orb-low",
+     "cpr-pivot", "cpr-tc", "cpr-bc"].forEach((id) => { $(id).textContent = "—"; });
+    $("orb-breakout").textContent = "NOT AVAILABLE";
     resetResult("WAIT — Technical analysis could not be loaded.");
   }
 }

@@ -442,9 +442,209 @@ def technical_analysis(symbol: str = "XAUUSD", interval: str = "5m"):
             "latest_candle": bars[-1]["openTime"],
             "age_minutes": round(age, 1),
             **result,
+            "orb": {
+                "status": "NOT_AVAILABLE",
+                "reason": "Requires verified Indian market opening-session candles."
+            },
+            "cpr": {
+                "status": "NOT_AVAILABLE",
+                "reason": "Requires previous completed trading-day OHLC."
+            },
         }
 
     except HTTPException:
         raise
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Technical analysis failed.") from exc
+
+
+@app.get("/indian-indices")
+def indian_indices():
+    """Experimental NIFTY, BANKNIFTY and SENSEX ORB/CPR calculations."""
+    import json
+    from datetime import datetime, timezone, timedelta
+    from zoneinfo import ZoneInfo
+    from urllib.request import Request, urlopen
+    from urllib.parse import quote
+    from backend.indicators import calculate_orb, calculate_cpr
+
+    ist = ZoneInfo("Asia/Kolkata")
+    now = datetime.now(ist)
+
+    symbols = {
+        "NIFTY": "^NSEI",
+        "BANKNIFTY": "^NSEBANK",
+        "SENSEX": "^BSESN",
+    }
+
+    def fetch_chart(symbol, period, interval):
+        url = (
+            "https://query1.finance.yahoo.com/v8/finance/chart/"
+            f"{quote(symbol, safe='')}?range={period}&interval={interval}"
+        )
+        request = Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 ALPHA-TRADING-AI"}
+        )
+        with urlopen(request, timeout=15) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+
+        chart = payload.get("chart", {})
+        if chart.get("error") or not chart.get("result"):
+            raise ValueError("Yahoo Finance returned no chart data.")
+
+        return chart["result"][0]
+
+    def candle_rows(result):
+        timestamps = result.get("timestamp") or []
+        quote_data = result["indicators"]["quote"][0]
+        rows = []
+
+        for i, stamp in enumerate(timestamps):
+            values = {
+                key: quote_data.get(key, [None] * len(timestamps))[i]
+                for key in ("open", "high", "low", "close", "volume")
+            }
+
+            if any(values[k] is None for k in ("open", "high", "low", "close")):
+                continue
+
+            rows.append({
+                "time": datetime.fromtimestamp(stamp, timezone.utc).astimezone(ist),
+                "open": float(values["open"]),
+                "high": float(values["high"]),
+                "low": float(values["low"]),
+                "close": float(values["close"]),
+                "volume": float(values["volume"] or 0),
+            })
+
+        return rows
+
+    output = {}
+
+    for name, yahoo_symbol in symbols.items():
+        try:
+            intraday_result = fetch_chart(yahoo_symbol, "5d", "5m")
+            intraday_rows = candle_rows(intraday_result)
+
+            # Exclude candles that have not completed yet.
+            completed = [
+                row for row in intraday_rows
+                if row["time"] + timedelta(minutes=5) <= now
+            ]
+
+            today_rows = [
+                row for row in completed
+                if row["time"].date() == now.date()
+            ]
+
+            opening_rows = [
+                row for row in today_rows
+                if row["time"].hour == 9
+                and row["time"].minute in (15, 20, 25)
+            ]
+
+            expected_times = [(9, 15), (9, 20), (9, 25)]
+            actual_times = [
+                (row["time"].hour, row["time"].minute)
+                for row in opening_rows
+            ]
+
+            if actual_times == expected_times:
+                post_open = [
+                    row for row in today_rows
+                    if row["time"].hour > 9
+                    or (row["time"].hour == 9 and row["time"].minute >= 30)
+                ]
+
+                if post_open:
+                    orb_candles = [
+                        {
+                            "high": row["high"],
+                            "low": row["low"],
+                            "close": row["close"],
+                        }
+                        for row in opening_rows + post_open
+                    ]
+                    orb = calculate_orb(orb_candles)
+                else:
+                    orb = {
+                        "status": "WAIT",
+                        "high": round(max(r["high"] for r in opening_rows), 4),
+                        "low": round(min(r["low"] for r in opening_rows), 4),
+                        "breakout": "WAIT",
+                        "reason": "Waiting for a completed candle after 9:30 AM IST.",
+                    }
+            else:
+                orb = {
+                    "status": "NOT_AVAILABLE",
+                    "high": None,
+                    "low": None,
+                    "breakout": "WAIT",
+                    "reason": "Complete 9:15, 9:20 and 9:25 IST candles are required.",
+                }
+
+            if completed:
+                latest = completed[-1]["time"]
+                age_minutes = (now - latest - timedelta(minutes=5)).total_seconds() / 60
+                market_status = (
+                    "FRESH" if 0 <= age_minutes <= 15 else "STALE"
+                )
+            else:
+                age_minutes = None
+                market_status = "NOT_AVAILABLE"
+
+            if market_status != "FRESH":
+                orb["breakout"] = "WAIT"
+                orb["status"] = "STALE" if market_status == "STALE" else "NOT_AVAILABLE"
+
+            # CPR uses the latest completed daily candle before today's date.
+            daily_result = fetch_chart(yahoo_symbol, "1mo", "1d")
+            daily_rows = candle_rows(daily_result)
+
+            previous_days = [
+                row for row in daily_rows
+                if row["time"].date() < now.date()
+            ]
+
+            if previous_days:
+                previous = previous_days[-1]
+                cpr = calculate_cpr(
+                    previous["high"],
+                    previous["low"],
+                    previous["close"],
+                )
+                cpr["previous_trading_day"] = previous["time"].date().isoformat()
+            else:
+                cpr = {
+                    "status": "NOT_AVAILABLE",
+                    "reason": "Previous completed daily OHLC is unavailable.",
+                }
+
+            output[name] = {
+                "symbol": yahoo_symbol,
+                "market_status": market_status,
+                "age_minutes": (
+                    round(age_minutes, 1) if age_minutes is not None else None
+                ),
+                "orb": orb,
+                "cpr": cpr,
+                "signal": "WAIT",
+                "message": "ORB/CPR calculations only. No verified trading signal.",
+            }
+
+        except Exception as exc:
+            output[name] = {
+                "market_status": "NOT_AVAILABLE",
+                "orb": {"status": "NOT_AVAILABLE", "breakout": "WAIT"},
+                "cpr": {"status": "NOT_AVAILABLE"},
+                "signal": "WAIT",
+                "error": str(exc)[:200],
+            }
+
+    return {
+        "timestamp_ist": now.isoformat(),
+        "opening_range": "09:15-09:30 IST",
+        "indices": output,
+        "broker_orders_enabled": False,
+    }

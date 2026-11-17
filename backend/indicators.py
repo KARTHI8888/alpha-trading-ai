@@ -146,6 +146,7 @@ def analyze_candles(candles: list[dict]) -> dict:
 
     values = calculate_indicators(candles)
     levels = calculate_market_levels(candles)
+    supertrend = calculate_supertrend(candles, period=10, multiplier=3.0)
     entry = float(candles[-1]["close"])
     atr_value = levels["atr14"]
 
@@ -158,6 +159,7 @@ def analyze_candles(candles: list[dict]) -> dict:
         "target3": None,
         "indicators": values,
         "levels": levels,
+        "supertrend": supertrend,
         "message": "Conditions are not sufficiently aligned. WAIT.",
     }
 
@@ -196,3 +198,138 @@ def analyze_candles(candles: list[dict]) -> dict:
         "message": "Experimental rule-based setup. Verify independently; not financial advice.",
     })
     return result
+
+
+def calculate_supertrend(
+    candles: list[dict],
+    period: int = 10,
+    multiplier: float = 3.0,
+) -> dict:
+    """Calculate Supertrend using Wilder ATR."""
+    if len(candles) < period + 2:
+        return {"value": None, "trend": "WAIT"}
+
+    true_ranges = []
+    for i in range(1, len(candles)):
+        high = float(candles[i]["high"])
+        low = float(candles[i]["low"])
+        previous_close = float(candles[i - 1]["close"])
+        true_ranges.append(
+            max(high - low, abs(high - previous_close), abs(low - previous_close))
+        )
+
+    atr_values = [None] * len(candles)
+    current_atr = sum(true_ranges[:period]) / period
+    atr_values[period] = current_atr
+
+    for i in range(period + 1, len(candles)):
+        current_atr = (
+            current_atr * (period - 1) + true_ranges[i - 1]
+        ) / period
+        atr_values[i] = current_atr
+
+    final_upper = None
+    final_lower = None
+    trend = 1
+    supertrend_value = None
+
+    for i in range(period, len(candles)):
+        atr_value = atr_values[i]
+        midpoint = (
+            float(candles[i]["high"]) + float(candles[i]["low"])
+        ) / 2
+        basic_upper = midpoint + multiplier * atr_value
+        basic_lower = midpoint - multiplier * atr_value
+        close = float(candles[i]["close"])
+
+        if final_upper is None:
+            final_upper = basic_upper
+            final_lower = basic_lower
+        else:
+            previous_close = float(candles[i - 1]["close"])
+            final_upper = (
+                basic_upper if basic_upper < final_upper or previous_close > final_upper
+                else final_upper
+            )
+            final_lower = (
+                basic_lower if basic_lower > final_lower or previous_close < final_lower
+                else final_lower
+            )
+
+        if trend == 1 and close < final_lower:
+            trend = -1
+        elif trend == -1 and close > final_upper:
+            trend = 1
+
+        supertrend_value = final_lower if trend == 1 else final_upper
+
+    return {
+        "value": round(supertrend_value, 4) if supertrend_value is not None else None,
+        "trend": "BULLISH" if trend == 1 else "BEARISH",
+        "atr_period": period,
+        "multiplier": multiplier,
+    }
+
+
+def calculate_orb(
+    candles: list[dict],
+    opening_range_minutes: int = 15,
+    candle_interval_minutes: int = 5,
+) -> dict:
+    """Calculate ORB from explicitly supplied opening-session candles."""
+    required = opening_range_minutes // candle_interval_minutes
+
+    if required < 1 or opening_range_minutes % candle_interval_minutes != 0:
+        raise ValueError("Opening range must be divisible by candle interval.")
+
+    if len(candles) < required:
+        return {
+            "status": "NOT_AVAILABLE",
+            "high": None,
+            "low": None,
+            "breakout": "WAIT",
+        }
+
+    opening = candles[:required]
+    orb_high = max(float(c["high"]) for c in opening)
+    orb_low = min(float(c["low"]) for c in opening)
+    latest_close = float(candles[-1]["close"])
+
+    breakout = (
+        "BULLISH_BREAKOUT" if latest_close > orb_high
+        else "BEARISH_BREAKDOWN" if latest_close < orb_low
+        else "WAIT"
+    )
+
+    return {
+        "status": "CALCULATED",
+        "high": round(orb_high, 4),
+        "low": round(orb_low, 4),
+        "breakout": breakout,
+        "opening_range_minutes": opening_range_minutes,
+    }
+
+
+def calculate_cpr(
+    previous_high: float,
+    previous_low: float,
+    previous_close: float,
+) -> dict:
+    """Calculate CPR from the previous completed trading day's OHLC."""
+    high = float(previous_high)
+    low = float(previous_low)
+    close = float(previous_close)
+
+    if low <= 0 or high < low or not low <= close <= high:
+        raise ValueError("Invalid previous-day OHLC values.")
+
+    pivot = (high + low + close) / 3
+    bc = (high + low) / 2
+    tc = (2 * pivot) - bc
+
+    return {
+        "pivot": round(pivot, 4),
+        "tc": round(max(tc, bc), 4),
+        "bc": round(min(tc, bc), 4),
+        "status": "CALCULATED",
+    }
