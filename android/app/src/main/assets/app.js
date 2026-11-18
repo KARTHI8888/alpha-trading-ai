@@ -28,8 +28,26 @@ const translations = {
     notConnected: "Market data and analysis: not connected",
     planned: "Planned analysis tools",
     options: "CE BUY / PE BUY",
-    plannedNote: "EMA 9/21, RSI, MACD, VWAP and Supertrend calculations are available for supported Forex/Gold symbols. ORB, CPR and CE/PE options signals are not implemented.",
-    footer: "Educational project scaffold · No broker orders",
+    plannedNote: "Forex/Gold indicators: EMA 9/21, DEMA 9, RSI 14, MACD, VWAP, Bollinger Bands, Supertrend, ATR 14, Support and Resistance. Trading signals are not verified; WAIT is shown.",
+    backtestTitle: "Historical Backtest Dashboard",
+    backtestIntro: "Historical strategy results. Not a live trading signal.",
+    backtestTimeframe: "Backtest timeframe",
+    backtestTarget: "Target scenario",
+    grossPnl: "Gross PnL (R)", netPnl: "Net PnL (R)",
+    grossWinRate: "Gross Win Rate", netWinRate: "Net Win Rate",
+    netProfitFactor: "Net Profit Factor", netDrawdown: "Net Max Drawdown (R)",
+    closedTrades: "Closed Trades", openTrades: "Open Trades",
+    dataRange: "Data range", candlesTested: "Candles tested",
+    costStatus: "Execution costs", tradeDetails: "Trade details",
+    tradeTime: "Entry time", tradeSide: "Side", tradeEntry: "Entry",
+    tradeExit: "Exit", tradeStop: "Stop", tradeTarget: "Target",
+    tradeOutcome: "Outcome", tradeNetPnl: "Net PnL",
+    backtestDisclaimer: "Historical and experimental results. Costs may be disabled. MID OHLC is not Bid/Ask execution data.",
+    backtestLoading: "Loading backtest report...",
+    backtestLoaded: "Backtest report loaded.",
+    backtestError: "Could not load backtest report.",
+    costsDisabled: "DISABLED", costsEnabled: "ENABLED",
+        footer: "Educational project scaffold · No broker orders",
     selectImage: "Select a chart image first.",
     unsupportedImage: "Choose a PNG, JPEG, GIF, or WebP image.",
     missingApi: "Enter the backend API address.",
@@ -71,8 +89,26 @@ const translations = {
     notConnected: "சந்தைத் தரவும் பகுப்பாய்வும்: இணைக்கப்படவில்லை",
     planned: "திட்டமிடப்பட்ட பகுப்பாய்வுக் கருவிகள்",
     options: "CE BUY / PE BUY",
-    plannedNote: "Forex/Gold சந்தைகளுக்கு EMA 9/21, RSI, MACD, VWAP, Supertrend கணக்கீடுகள் உள்ளன. ORB, CPR மற்றும் CE/PE Options signals இன்னும் உருவாக்கப்படவில்லை.",
-    footer: "கல்வித் திட்டத் தொடக்கம் · Broker orders இல்லை",
+    plannedNote: "Forex/Gold குறியீடுகள்: EMA 9/21, DEMA 9, RSI 14, MACD, VWAP, Bollinger Bands, Supertrend, ATR 14, Support மற்றும் Resistance. Trading signal உறுதிப்படுத்தப்படவில்லை; WAIT காட்டப்படும்.",
+    backtestTitle: "வரலாற்று Backtest Dashboard",
+    backtestIntro: "வரலாற்று உத்தி முடிவுகள். இது Live Trading Signal அல்ல.",
+    backtestTimeframe: "Backtest கால அளவு",
+    backtestTarget: "இலக்கு நிலை",
+    grossPnl: "மொத்த PnL (R)", netPnl: "நிகர PnL (R)",
+    grossWinRate: "மொத்த வெற்றி விகிதம்", netWinRate: "நிகர வெற்றி விகிதம்",
+    netProfitFactor: "நிகர Profit Factor", netDrawdown: "அதிகபட்ச நிகர Drawdown (R)",
+    closedTrades: "முடிக்கப்பட்ட Trades", openTrades: "திறந்த Trades",
+    dataRange: "தரவு கால வரம்பு", candlesTested: "சோதிக்கப்பட்ட Candles",
+    costStatus: "செயலாக்கச் செலவுகள்", tradeDetails: "Trade விவரங்கள்",
+    tradeTime: "Entry நேரம்", tradeSide: "வகை", tradeEntry: "Entry",
+    tradeExit: "Exit", tradeStop: "Stop Loss", tradeTarget: "Target",
+    tradeOutcome: "முடிவு", tradeNetPnl: "நிகர PnL",
+    backtestDisclaimer: "இவை வரலாற்று மற்றும் சோதனை முடிவுகள். செலவுகள் முடக்கப்பட்டிருக்கலாம். MID OHLC என்பது Bid/Ask execution தரவு அல்ல.",
+    backtestLoading: "Backtest அறிக்கை ஏற்றப்படுகிறது...",
+    backtestLoaded: "Backtest அறிக்கை ஏற்றப்பட்டது.",
+    backtestError: "Backtest அறிக்கையை ஏற்ற முடியவில்லை.",
+    costsDisabled: "முடக்கப்பட்டுள்ளது", costsEnabled: "செயல்பாட்டில் உள்ளது",
+        footer: "கல்வித் திட்டத் தொடக்கம் · Broker orders இல்லை",
     selectImage: "முதலில் விளக்கப்படப் படத்தைத் தேர்ந்தெடுக்கவும்.",
     unsupportedImage: "PNG, JPEG, GIF அல்லது WebP படத்தைத் தேர்ந்தெடுக்கவும்.",
     missingApi: "Backend API முகவரியை உள்ளிடவும்.",
@@ -92,6 +128,7 @@ let selectedFile = null;
 let requestMessageKey = "";
 let requestMessageStatus = 0;
 let hasAnalysisResponse = false;
+let visionDescription = "";
 
 function currentLanguage() {
   return translations[$("language").value] || translations.en;
@@ -131,10 +168,100 @@ function renderLanguage() {
   });
 
   $("file-name").textContent = selectedFile ? selectedFile.name : language.noImage;
-  if (hasAnalysisResponse) $("result-note").textContent = language.success;
+  if (hasAnalysisResponse) {
+    $("vision-insight").textContent = `${language.visionResult} ${visionDescription}`;
+    $("vision-insight").hidden = false;
+  }
   renderRequestMessage();
 }
 
+
+
+async function loadBacktestResults() {
+  const status = $("backtest-status");
+  const base = $("api-url").value.trim().replace(/\/+$/, "");
+  const interval = $("backtest-interval").value;
+  const target = $("backtest-target").value;
+  const language = currentLanguage();
+
+  status.textContent = language.backtestLoading;
+
+  try {
+    const response = await fetch(
+      `${base}/backtest-results?interval=${encodeURIComponent(interval)}`
+    );
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.detail || language.backtestError);
+
+    const scenario = data.scenarios?.[target];
+    const m = scenario?.metrics;
+    if (!m) throw new Error(language.backtestError);
+
+    const fmt = (value, digits = 2) =>
+      value === null || value === undefined || !Number.isFinite(Number(value))
+        ? "—" : Number(value).toFixed(digits);
+
+    $("bt-gross-pnl").textContent =
+      `${fmt(Number(m.gross_profit_r || 0) - Number(m.gross_loss_r || 0))} R`;
+    $("bt-net-pnl").textContent = `${fmt(m.net_profit_r)} R`;
+    $("bt-gross-win-rate").textContent = `${fmt(m.win_rate_percent)}%`;
+    $("bt-net-win-rate").textContent = `${fmt(m.net_win_rate_percent)}%`;
+    $("bt-profit-factor").textContent = fmt(m.net_profit_factor);
+    $("bt-drawdown").textContent = `${fmt(m.net_max_drawdown_r)} R`;
+    $("bt-closed-trades").textContent = m.closed_trades ?? "—";
+    $("bt-open-trades").textContent = m.open_trades ?? "—";
+
+    $("bt-data-range").textContent =
+      `${data.first_candle || "—"} → ${data.last_candle || "—"}`;
+    $("bt-candles").textContent = data.candles_tested ?? "—";
+
+    const costs = data.methodology?.costs || {};
+    $("bt-cost-status").textContent =
+      costs.status === "DISABLED" ? language.costsDisabled :
+      costs.status === "ENABLED" ? language.costsEnabled : "—";
+
+    $("bt-cost-details").textContent =
+      `Spread: ${fmt(costs.spread_price, 4)} · Slippage/side: ${fmt(costs.slippage_per_side, 4)} · Commission: ${fmt(costs.commission_price_equivalent, 4)}. ${costs.limitations || ""}`;
+
+    const tbody = $("backtest-trades-body");
+    tbody.replaceChildren();
+
+    const trades = Array.isArray(scenario.trades) ? scenario.trades : [];
+    if (!trades.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 8;
+      cell.textContent = "—";
+      row.appendChild(cell);
+      tbody.appendChild(row);
+    } else {
+      for (const trade of trades) {
+        const row = document.createElement("tr");
+        const values = [
+          trade.entry_time || "—",
+          trade.signal || "—",
+          fmt(trade.entry, 4),
+          fmt(trade.exit, 4),
+          fmt(trade.stop_price, 4),
+          fmt(trade.target_price, 4),
+          trade.outcome || "—",
+          `${fmt(trade.net_pnl, 4)}`
+        ];
+        for (const value of values) {
+          const cell = document.createElement("td");
+          cell.textContent = String(value);
+          row.appendChild(cell);
+        }
+        tbody.appendChild(row);
+      }
+    }
+
+    status.textContent = `${language.backtestLoaded} · ${data.symbol} · ${interval.toUpperCase()} · ${target.toUpperCase()}`;
+  } catch (error) {
+    status.textContent = `${language.backtestError} ${error.message || ""}`;
+  }
+}
 
 function updateLiveChart() {
   const symbols = {
@@ -154,15 +281,23 @@ async function loadBackendHealth() { const base = $("api-url").value.trim().repl
 async function loadLiveIndicators() {
   const status = $("market-status");
   const note = $("market-data-note");
-  const indicatorIds = ["ema9", "ema21", "rsi14", "macd", "macd-signal", "vwap"];
+  const indicatorIds = ["ema9","ema21","dema9","rsi14","macd","macd-signal","vwap","bb-upper","bb-middle","bb-lower","supertrend","supertrend-trend","atr14","support","resistance"];
   const resultIds = ["entry", "stop", "target1", "target2", "target3"];
   const symbol = $("market").value;
   const interval = $("timeframe").value;
 
   function resetResult(message = "WAIT") {
     $("signal").textContent = "WAIT";
+    $("signal").dataset.status = "WAIT";
+    $("signal-status").textContent = "WAIT";
     resultIds.forEach((id) => { $(id).textContent = "—"; });
     $("result-note").textContent = message;
+
+    ["latest-tick-volume", "average-tick-volume", "required-tick-volume"].forEach((id) => {
+      $(id).textContent = "—";
+    });
+    $("volume-confirmation").textContent = "—";
+    $("volume-confirmation").dataset.status = "UNKNOWN";
   }
 
   if (!["XAUUSD", "EURUSD", "GBPUSD"].includes(symbol)) {
@@ -200,48 +335,55 @@ async function loadLiveIndicators() {
     const values = data.indicators || {};
     const levels = data.levels || {};
     const st = data.supertrend || {};
-    const orb = data.orb || {};
-    const cpr = data.cpr || {};
+    const volume = data.volume_analysis || {};
+    $("latest-tick-volume").textContent =
+      Number.isFinite(volume.latest_tick_volume) ? volume.latest_tick_volume.toFixed(2) : "—";
+    $("average-tick-volume").textContent =
+      Number.isFinite(volume.average_tick_volume) ? volume.average_tick_volume.toFixed(2) : "—";
+    $("required-tick-volume").textContent =
+      Number.isFinite(volume.required_tick_volume) ? volume.required_tick_volume.toFixed(2) : "—";
 
-    const formatValue = (value) =>
-      Number.isFinite(value) ? value.toFixed(4) : "—";
-
-    $("supertrend").textContent = formatValue(st.value);
-    $("supertrend-trend").textContent = st.trend || "WAIT";
-
-    $("orb-high").textContent = formatValue(orb.high);
-    $("orb-low").textContent = formatValue(orb.low);
-    $("orb-breakout").textContent = orb.breakout || orb.status || "NOT AVAILABLE";
-
-    $("cpr-pivot").textContent = formatValue(cpr.pivot);
-    $("cpr-tc").textContent = formatValue(cpr.tc);
-    $("cpr-bc").textContent = formatValue(cpr.bc);
-
+    const volumeStatus = $("volume-confirmation");
+    volumeStatus.textContent = volume.confirmation || "—";
+    volumeStatus.dataset.status = volume.confirmation || "UNKNOWN";
     status.textContent = data.status || "UNKNOWN";
     $("live-ai-status").textContent = data.status || "UNKNOWN";
 
     for (const id of indicatorIds) {
-      const value = id === "macd-signal" ? values.macd_signal : values[id];
-      $(id).textContent = Number.isFinite(value) ? value.toFixed(4) : "—";
+      const map = {"macd-signal":values.macd_signal,"bb-upper":values.bb_upper,"bb-middle":values.bb_middle,"bb-lower":values.bb_lower,"supertrend":st.value,"supertrend-trend":st.trend,"atr14":levels.atr14,"support":levels.support,"resistance":levels.resistance};
+      const value = Object.prototype.hasOwnProperty.call(map,id) ? map[id] : values[id];
+      $(id).textContent = Number.isFinite(value) ? value.toFixed(4) : (id === "supertrend-trend" ? (value || "WAIT") : "—");
     }
 
-    const validSignal = data.status === "FRESH" &&
-      ["BUY", "SELL"].includes(data.signal);
+    const allowedSignals = ["BUY", "SELL", "WAIT"];
+    const signal = data.status === "FRESH" && allowedSignals.includes(data.signal)
+      ? data.signal
+      : "WAIT";
 
-    $("signal").textContent = validSignal ? data.signal : "WAIT";
+    $("signal").textContent = signal;
+    $("signal").dataset.status = signal;
+    $("signal-status").textContent = signal;
+
+    const resultValues = {
+      entry: data.entry,
+      stop: data.stop,
+      target1: data.target1,
+      target2: data.target2,
+      target3: data.target3
+    };
 
     for (const id of resultIds) {
-      const value = validSignal ? data[id] : null;
-      $(id).textContent = Number.isFinite(value) ? value.toFixed(4) : "—";
+      const value = resultValues[id];
+      $(id).textContent =
+        signal !== "WAIT" && Number.isFinite(value) ? value.toFixed(4) : "—";
     }
 
     const levelText = Number.isFinite(levels.atr14)
       ? ` · ATR: ${levels.atr14.toFixed(4)}` : "";
 
-    $("result-note").textContent =
-      validSignal
-        ? `${data.message} Experimental signal only. Verify independently.`
-        : `${data.message || "No confirmed setup."} Signal: WAIT.`;
+    $("result-note").textContent = signal === "WAIT"
+      ? (data.message || "WAIT — Trading conditions are not sufficiently aligned.")
+      : `${data.message || signal} · Experimental rule-based signal; not a guarantee of profit.`;
 
     note.textContent =
       `Latest candle: ${data.latest_candle || "unknown"} · Age: ${data.age_minutes ?? "?"} min${levelText}`;
@@ -251,9 +393,6 @@ async function loadLiveIndicators() {
     $("live-ai-status").textContent = "ERROR";
     note.textContent = error.message || "Could not load technical analysis.";
     indicatorIds.forEach((id) => { $(id).textContent = "—"; });
-    ["supertrend", "supertrend-trend", "orb-high", "orb-low",
-     "cpr-pivot", "cpr-tc", "cpr-bc"].forEach((id) => { $(id).textContent = "—"; });
-    $("orb-breakout").textContent = "NOT AVAILABLE";
     resetResult("WAIT — Technical analysis could not be loaded.");
   }
 }
@@ -299,7 +438,9 @@ window.onNativeChartCaptured = function (base64) {
     preview.style.visibility = "visible";
     preview.style.opacity = "1";
     hasAnalysisResponse = false;
-    $("result-note").textContent = currentLanguage().waitNote;
+    visionDescription = "";
+    $("vision-insight").textContent = "";
+    $("vision-insight").hidden = true;
     setRequestMessage("");
     $("capture-message").textContent = currentLanguage().captureReady;
   } catch (error) {
@@ -350,7 +491,9 @@ $("chart-file").addEventListener("change", (event) => {
   }
 
   hasAnalysisResponse = false;
-  $("result-note").textContent = currentLanguage().waitNote;
+  visionDescription = "";
+  $("vision-insight").textContent = "";
+  $("vision-insight").hidden = true;
   setRequestMessage("");
 });
 
@@ -402,13 +545,10 @@ $("analyze").addEventListener("click", async () => {
     }
 
     const data = await response.json();
-    $("signal").textContent = data.signal || "WAIT";
-    for (const id of ["entry", "stop", "target1", "target2", "target3"]) {
-      $(id).textContent = "—";
-    }
-
+    visionDescription = data.vision_description || data.message || currentLanguage().success;
     hasAnalysisResponse = true;
-    $("result-note").textContent = data.vision_description ? `${currentLanguage().visionResult} ${data.vision_description}` : (data.message || currentLanguage().success);
+    $("vision-insight").textContent = `${currentLanguage().visionResult} ${visionDescription}`;
+    $("vision-insight").hidden = false;
     setRequestMessage("success");
   } catch {
     setRequestMessage("networkError");
@@ -417,4 +557,10 @@ $("analyze").addEventListener("click", async () => {
   }
 });
 
+
+$("backtest-interval").addEventListener("change", loadBacktestResults);
+$("backtest-target").addEventListener("change", loadBacktestResults);
+$("api-url").addEventListener("change", loadBacktestResults);
+
 renderLanguage();
+loadBacktestResults();
