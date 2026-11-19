@@ -65,7 +65,7 @@ class MainActivity : Activity() {
                     Build.VERSION.SDK_INT < Build.VERSION_CODES.O
                 ) return@runOnUiThread
 
-                val scale = resources.displayMetrics.density * webView.scale
+                val scale = resources.displayMetrics.density
                 val location = IntArray(2)
                 webView.getLocationInWindow(location)
 
