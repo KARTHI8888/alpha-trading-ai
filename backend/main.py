@@ -93,6 +93,32 @@ class AnalysisResponse(BaseModel):
     message: str
 
 
+
+class CombinedAnalysisResponse(BaseModel):
+    signal: Literal["WAIT"] = "WAIT"
+    technical_candidate: Literal["BUY", "SELL", "WAIT"]
+    market: Market
+    timeframe: Timeframe
+    market_data_status: Literal["FRESH", "STALE"]
+    latest_candle: str
+    age_minutes: float
+    candles_received: int
+    analysis_connected: bool
+    market_data_connected: bool
+    vision_description: str
+    indicators: dict
+    levels: dict
+    supertrend: dict
+    volume_confirmation: bool
+    volume_analysis: dict
+    buy_score: int
+    sell_score: int
+    buy_checks: dict
+    sell_checks: dict
+    broker_orders_enabled: Literal[False] = False
+    message: str
+
+
 def validate_decoded_image(data: bytes, content_type: str) -> None:
     """Verify and fully decode a supported image in memory within safety caps."""
     expected_format = MIME_FORMATS.get(content_type)
@@ -167,13 +193,18 @@ def validate_decoded_image(data: bytes, content_type: str) -> None:
 
 
 def run_local_vision(image_data: bytes) -> str:
-    """Describe an uploaded chart using the local SmolVLM model."""
+    """Inspect a chart using separate, conservative local vision questions."""
     root = Path(__file__).resolve().parent.parent
     model = root / "models" / "SmolVLM-500M-Instruct-Q8_0.gguf"
     projector = root / "models" / "mmproj-SmolVLM-500M-Instruct-Q8_0.gguf"
     executable = shutil.which("llama-mtmd-cli")
+
     if not executable or not model.is_file() or not projector.is_file():
-        raise HTTPException(status_code=503, detail="Local vision model files or runtime unavailable.")
+        raise HTTPException(
+            status_code=503,
+            detail="Local vision model files or runtime unavailable.",
+        )
+
     temp_path = None
     try:
         with Image.open(BytesIO(image_data)) as image:
@@ -181,29 +212,177 @@ def run_local_vision(image_data: bytes) -> str:
             with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp:
                 temp_path = temp.name
             image.convert("RGB").save(temp_path, format="PNG")
-        prompt = ("Describe visible chart facts only: candle colors and overall "
-                  "left-to-right direction if clear. Do not invent prices, "
-                  "indicators, entry, stop loss, targets, or trading advice. "
-                  "If unclear, say UNCLEAR.")
-        result = subprocess.run(
-            [executable, "-m", str(model), "--mmproj", str(projector),
-             "--image", temp_path, "-p", prompt, "-c", "2048", "-n", "120",
-             "-t", "4", "--no-warmup", "--temp", "0", "--top-k", "1",
-             "--seed", "42"],
-            capture_output=True, text=True, timeout=180,
+
+        questions = [
+            (
+                "Chart type",
+                "What is the main price chart type? Answer exactly one: "
+                "CANDLESTICK, LINE, BAR, OTHER, UNCLEAR."
+            ),
+            (
+                "Candle colors",
+                "What candlestick colors are clearly visible? Answer only "
+                "RED AND GREEN, RED, GREEN, OTHER, or UNCLEAR."
+            ),
+            (
+                "Price trend",
+                "Look only at the main price candles. Is the overall visible "
+                "movement UP, DOWN, SIDEWAYS, or UNCLEAR? Answer one word."
+            ),
+            (
+                "Volume panel",
+                "Is a separate volume histogram panel visible below the main "
+                "price chart? Answer exactly YES, NO, or UNCLEAR."
+            ),
+            (
+                "Candle bodies and wicks",
+                "Are individual candlestick bodies and upper or lower wicks "
+                "clearly visible? Answer exactly YES, NO, or UNCLEAR."
+            ),
+        ]
+
+        results = []
+        allowed = {
+            "Chart type": {"CANDLESTICK", "LINE", "BAR", "OTHER", "UNCLEAR"},
+            "Candle colors": {"RED AND GREEN", "RED", "GREEN", "OTHER", "UNCLEAR"},
+            "Price trend": {"UP", "DOWN", "SIDEWAYS", "UNCLEAR"},
+            "Volume panel": {"YES", "NO", "UNCLEAR"},
+            "Candle bodies and wicks": {"YES", "NO", "UNCLEAR"},
+        }
+
+        for label, prompt in questions:
+            try:
+                result = subprocess.run(
+                    [
+                        executable, "-m", str(model),
+                        "--mmproj", str(projector),
+                        "--image", temp_path,
+                        "-p", prompt,
+                        "-c", "2048",
+                        "-n", "20",
+                        "-t", "4",
+                        "--no-warmup",
+                        "--temp", "0",
+                        "--top-k", "1",
+                        "--seed", "42",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=45,
+                )
+                if result.returncode != 0:
+                    answer = "UNCLEAR"
+                else:
+                    lines = [
+                        line.strip().upper().strip(" .!,:;")
+                        for line in result.stdout.splitlines()
+                        if line.strip()
+                    ]
+                    answer = lines[-1] if lines else "UNCLEAR"
+                    if label == "Candle colors":
+                        if "RED" in answer and "GREEN" in answer:
+                            answer = "RED AND GREEN"
+                        elif answer not in allowed[label]:
+                            answer = "UNCLEAR"
+                    elif answer not in allowed[label]:
+                        answer = "UNCLEAR"
+            except subprocess.TimeoutExpired:
+                answer = "UNCLEAR"
+
+            results.append(f"{label}: {answer}")
+
+        results.append(
+            "Indicator labels: NOT RELIABLY READABLE; manual verification required."
         )
-        if result.returncode != 0:
-            raise HTTPException(status_code=503, detail="Local vision inference failed.")
-        lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-        if not lines:
-            raise HTTPException(status_code=503, detail="Vision model returned no description.")
-        return lines[-1][:1000]
-    except subprocess.TimeoutExpired as exc:
-        raise HTTPException(status_code=504, detail="Vision analysis timed out.") from exc
+        results.append(
+            "Safety: Visual description only. No validated trading signal."
+        )
+        return chr(10).join(results)
+
+    except (Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+        raise HTTPException(
+            status_code=413,
+            detail="Image exceeds safe decoding limits.",
+        ) from exc
     finally:
         if temp_path and os.path.exists(temp_path):
             os.unlink(temp_path)
 
+
+
+def fetch_combined_market_data(symbol: str, interval: str) -> dict:
+    """Fetch and validate fresh Forex OHLC candles from BiQuote."""
+    import math
+    from datetime import datetime, timezone
+    from urllib.request import Request, urlopen
+
+    allowed_symbols = {"XAUUSD", "EURUSD", "GBPUSD"}
+    interval_minutes = {"5m": 5, "15m": 15, "30m": 30, "1h": 60}
+
+    if symbol not in allowed_symbols or interval not in interval_minutes:
+        raise HTTPException(status_code=400, detail="Unsupported Forex symbol or timeframe.")
+
+    url = f"https://biquote.io/api/{symbol}/ohlc?interval={interval}&limit=50"
+    req = Request(url, headers={"User-Agent": "ALPHA-TRADING-AI/1.0"})
+
+    try:
+        with urlopen(req, timeout=15) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+
+        bars = payload.get("bars", [])
+        if not isinstance(bars, list) or len(bars) < 35:
+            raise ValueError("Not enough valid candles.")
+
+        bars = sorted(bars, key=lambda bar: bar["openTime"])
+        candles = []
+
+        for bar in bars:
+            values = {
+                key: float(bar[key])
+                for key in ("open", "high", "low", "close")
+            }
+            volume = float(bar.get("tickVolume", bar.get("volume", 0)))
+
+            if not all(math.isfinite(v) and v > 0 for v in values.values()):
+                raise ValueError("Invalid OHLC value.")
+            if not math.isfinite(volume) or volume < 0:
+                raise ValueError("Invalid volume value.")
+            if values["high"] < max(values["open"], values["close"]):
+                raise ValueError("Invalid candle high.")
+            if values["low"] > min(values["open"], values["close"]):
+                raise ValueError("Invalid candle low.")
+            if values["high"] < values["low"]:
+                raise ValueError("Invalid candle range.")
+
+            candles.append({**values, "volume": volume})
+
+        latest_text = bars[-1]["openTime"]
+        latest_time = datetime.fromisoformat(latest_text.replace("Z", "+00:00"))
+
+        if latest_time.tzinfo is None:
+            raise ValueError("Candle timestamp has no timezone.")
+
+        age_minutes = (
+            datetime.now(timezone.utc) -
+            latest_time.astimezone(timezone.utc)
+        ).total_seconds() / 60
+
+        fresh = 0 <= age_minutes <= interval_minutes[interval] * 3
+
+        return {
+            "candles": candles,
+            "latest_candle": latest_text,
+            "age_minutes": round(age_minutes, 1),
+            "fresh": fresh,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not retrieve valid BiQuote market data.",
+        ) from exc
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -296,6 +475,113 @@ async def analyze_screenshot(
         message="Local vision description only. Signal remains WAIT; no validated trading signal is provided.",
     )
 
+
+
+@app.post("/combined-analysis", response_model=CombinedAnalysisResponse)
+async def combined_analysis(
+    request: Request,
+    market: Market,
+    timeframe: Timeframe,
+) -> CombinedAnalysisResponse:
+    """Combine local image description and validated Forex data; final signal stays WAIT."""
+    content_type = (
+        request.headers.get("content-type", "")
+        .split(";", 1)[0]
+        .strip()
+        .lower()
+    )
+
+    if content_type not in MIME_FORMATS:
+        raise HTTPException(
+            status_code=415,
+            detail="Content-Type must be PNG, JPEG, GIF, or WebP.",
+        )
+
+    image_data = bytearray()
+    try:
+        async for chunk in request.stream():
+            if len(image_data) + len(chunk) > MAX_UPLOAD_BYTES:
+                raise HTTPException(
+                    status_code=413,
+                    detail="Image exceeds the 10 MiB upload limit.",
+                )
+            image_data.extend(chunk)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Could not read image request.",
+        ) from exc
+
+    if not image_data:
+        raise HTTPException(status_code=400, detail="Uploaded image is empty.")
+
+    image_bytes = bytes(image_data)
+    validate_decoded_image(image_bytes, content_type)
+    image_data.clear()
+
+    vision_description = await asyncio.to_thread(
+        run_local_vision, image_bytes
+    )
+    del image_bytes
+
+    market_data = await asyncio.to_thread(
+        fetch_combined_market_data,
+        market.value,
+        timeframe.value,
+    )
+
+    from backend.indicators import analyze_candles
+
+    try:
+        result = await asyncio.to_thread(
+            analyze_candles,
+            market_data["candles"],
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Technical analysis could not be completed safely.",
+        ) from exc
+
+    technical_candidate = (
+        result.get("signal", "WAIT")
+        if market_data["fresh"]
+        else "WAIT"
+    )
+
+    if technical_candidate not in {"BUY", "SELL", "WAIT"}:
+        technical_candidate = "WAIT"
+
+    return CombinedAnalysisResponse(
+        signal="WAIT",
+        technical_candidate=technical_candidate,
+        market=market,
+        timeframe=timeframe,
+        market_data_status="FRESH" if market_data["fresh"] else "STALE",
+        latest_candle=market_data["latest_candle"],
+        age_minutes=market_data["age_minutes"],
+        candles_received=len(market_data["candles"]),
+        analysis_connected=True,
+        market_data_connected=True,
+        vision_description=vision_description,
+        indicators=result.get("indicators", {}),
+        levels=result.get("levels", {}),
+        supertrend=result.get("supertrend", {}),
+        volume_confirmation=result.get("volume_confirmation", False),
+        volume_analysis=result.get("volume_analysis", {}),
+        buy_score=result.get("buy_score", 0),
+        sell_score=result.get("sell_score", 0),
+        buy_checks=result.get("buy_checks", {}),
+        sell_checks=result.get("sell_checks", {}),
+        broker_orders_enabled=False,
+        message=(
+            "Vision is descriptive only. Technical candidate is experimental "
+            "and non-actionable. Final signal remains WAIT. "
+            "No Entry, Stop Loss, or Targets are provided."
+        ),
+    )
 
 class CandleInput(BaseModel):
     open: float

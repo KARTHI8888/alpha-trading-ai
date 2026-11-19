@@ -24,3 +24,15 @@ htmlcov/
 # Local AI models and backups
 models/
 backend/main.py.backup
+
+# Android / Gradle build artifacts
+.gradle/
+**/.gradle/
+build/
+**/build/
+local.properties
+
+# Local backup files (preserve locally, do not push)
+*.step2-backup
+*.before-signal-engine
+*.pre-combined-backup

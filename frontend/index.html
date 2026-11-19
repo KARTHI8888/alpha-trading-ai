@@ -159,6 +159,55 @@
           </div>
           <p class="muted">Tick volume measures market activity; it is not centralized exchange volume.</p>
         </div>
+        <div class="condition-level">
+          <h3>Condition Level Dashboard</h3>
+          <div class="condition-score">
+            <span>BUY Score</span>
+            <strong id="buy-score">— / 8</strong>
+          </div>
+          <div class="condition-percent">
+            <div class="condition-percent-label">
+              <span>BUY CONDITION</span>
+              <strong id="buy-percent">—%</strong>
+            </div>
+            <div class="condition-progress-track">
+              <div id="buy-progress" class="condition-progress-fill" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="condition-grid" id="buy-conditions">
+            <div><span>EMA Trend</span><strong id="buy-ema_trend">—</strong></div>
+            <div><span>DEMA Trend</span><strong id="buy-dema_trend">—</strong></div>
+            <div><span>Above VWAP</span><strong id="buy-above_vwap">—</strong></div>
+            <div><span>MACD Bullish</span><strong id="buy-macd_bullish">—</strong></div>
+            <div><span>RSI Bullish</span><strong id="buy-rsi_bullish">—</strong></div>
+            <div><span>Supertrend Bullish</span><strong id="buy-supertrend_bullish">—</strong></div>
+            <div><span>Above Bollinger Mid</span><strong id="buy-above_bollinger_mid">—</strong></div>
+            <div><span>Volume Confirmed</span><strong id="buy-volume_confirmed">—</strong></div>
+          </div>
+          <div class="condition-score">
+            <span>SELL Score</span>
+            <strong id="sell-score">— / 8</strong>
+          </div>
+          <div class="condition-percent">
+            <div class="condition-percent-label">
+              <span>SELL CONDITION</span>
+              <strong id="sell-percent">—%</strong>
+            </div>
+            <div class="condition-progress-track">
+              <div id="sell-progress" class="condition-progress-fill" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="condition-grid" id="sell-conditions">
+            <div><span>EMA Trend</span><strong id="sell-ema_trend">—</strong></div>
+            <div><span>DEMA Trend</span><strong id="sell-dema_trend">—</strong></div>
+            <div><span>Below VWAP</span><strong id="sell-below_vwap">—</strong></div>
+            <div><span>MACD Bearish</span><strong id="sell-macd_bearish">—</strong></div>
+            <div><span>RSI Bearish</span><strong id="sell-rsi_bearish">—</strong></div>
+            <div><span>Supertrend Bearish</span><strong id="sell-supertrend_bearish">—</strong></div>
+            <div><span>Below Bollinger Mid</span><strong id="sell-below_bollinger_mid">—</strong></div>
+            <div><span>Volume Confirmed</span><strong id="sell-volume_confirmed">—</strong></div>
+          </div>
+        </div>
       </div>
       <div class="connection-state">
         <div>Local AI: <strong id="local-ai-status">CHECKING</strong></div>

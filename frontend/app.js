@@ -355,6 +355,40 @@ async function loadLiveIndicators() {
       $(id).textContent = Number.isFinite(value) ? value.toFixed(4) : (id === "supertrend-trend" ? (value || "WAIT") : "—");
     }
 
+    const conditionGroups = [
+      { name: "buy", checks: data.buy_checks || {}, score: data.buy_score },
+      { name: "sell", checks: data.sell_checks || {}, score: data.sell_score }
+    ];
+
+    for (const group of conditionGroups) {
+      const scoreElement = $(`${group.name}-score`);
+      scoreElement.textContent =
+        Number.isFinite(group.score) ? `${group.score} / 8` : "— / 8";
+
+      const percentElement = $(`${group.name}-percent`);
+      const progressElement = $(`${group.name}-progress`);
+
+      if (percentElement && progressElement) {
+        const validScore = Number.isFinite(group.score);
+        const percent = validScore
+          ? Math.round(Math.max(0, Math.min(8, group.score)) / 8 * 100)
+          : 0;
+
+        percentElement.textContent = validScore ? `${percent}%` : "—%";
+        progressElement.style.width = `${percent}%`;
+        progressElement.dataset.status =
+          !validScore ? "UNKNOWN" : percent >= 75 ? "PASS" : "FAIL";
+      }
+
+      for (const [key, passed] of Object.entries(group.checks)) {
+        const element = $(`${group.name}-${key}`);
+        if (!element) continue;
+
+        element.textContent = passed ? "PASS" : "FAIL";
+        element.dataset.status = passed ? "PASS" : "FAIL";
+      }
+    }
+
     const allowedSignals = ["BUY", "SELL", "WAIT"];
     const signal = data.status === "FRESH" && allowedSignals.includes(data.signal)
       ? data.signal

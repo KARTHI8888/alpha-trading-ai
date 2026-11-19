@@ -355,3 +355,125 @@ footer { display: flex; justify-content: space-between; gap: 10px; padding-top: 
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* BUY / SELL Condition Level Dashboard */
+.condition-level {
+  margin: 20px 0;
+  padding: 16px;
+  background: #101a27;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.condition-level h3 {
+  margin: 0 0 16px;
+  color: var(--accent);
+  font-size: 17px;
+}
+
+.condition-score {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 10px;
+  padding: 12px;
+  background: #182638;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.condition-score span {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.condition-score strong {
+  color: var(--accent);
+  font-size: 16px;
+}
+
+.condition-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.condition-grid > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 11px;
+  background: #182638;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.condition-grid span {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.condition-grid strong {
+  font-size: 13px;
+}
+
+.condition-grid strong[data-status="PASS"] {
+  color: #20d890;
+}
+
+.condition-grid strong[data-status="FAIL"] {
+  color: #ff626e;
+}
+
+@media (max-width: 360px) {
+  .condition-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Condition percentage and progress bar */
+.condition-percent {
+  margin: 10px 0 16px;
+}
+
+.condition-percent-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 9px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.condition-percent-label strong {
+  color: #ff626e;
+  font-size: 17px;
+}
+
+.condition-progress-track {
+  width: 100%;
+  height: 12px;
+  overflow: hidden;
+  background: #293546;
+  border-radius: 20px;
+}
+
+.condition-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #ff626e;
+  border-radius: 20px;
+  transition: width 0.5s ease, background 0.3s ease;
+}
+
+.condition-progress-fill[data-status="PASS"] {
+  background: #20d890;
+}
+
+.condition-progress-fill[data-status="UNKNOWN"] {
+  background: #718096;
+}
