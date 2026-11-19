@@ -1,6 +1,7 @@
 """Safe API scaffold: no market data, analysis, persistence, or broker orders."""
 
 import os
+import json
 import asyncio
 import shutil
 import subprocess
@@ -212,10 +213,29 @@ def health() -> HealthResponse:
     model = root / "models" / "SmolVLM-500M-Instruct-Q8_0.gguf"
     projector = root / "models" / "mmproj-SmolVLM-500M-Instruct-Q8_0.gguf"
     analysis_ready = shutil.which("llama-mtmd-cli") is not None and model.is_file() and projector.is_file()
+    market_data_ready = False
+    try:
+        from urllib.request import Request, urlopen
+
+        url = "https://biquote.io/api/XAUUSD/ohlc?interval=5m&limit=50"
+        request = Request(url, headers={"User-Agent": "ALPHA-TRADING-AI/1.0"})
+        with urlopen(request, timeout=8) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+
+        bars = payload.get("bars", [])
+        if len(bars) >= 35:
+            latest = bars[-1]
+            market_data_ready = all(
+                key in latest and float(latest[key]) > 0
+                for key in ("open", "high", "low", "close")
+            )
+    except Exception:
+        market_data_ready = False
+
     return HealthResponse(
         status="ok",
         analysis_connected=analysis_ready,
-        market_data_connected=False,
+        market_data_connected=market_data_ready,
         broker_orders_enabled=False,
     )
 
@@ -314,7 +334,11 @@ def live_indicators(symbol: str = "XAUUSD", interval: str = "5m"):
     from datetime import datetime, timezone
     from urllib.request import Request, urlopen
 
-    from backend.indicators import calculate_indicators
+    from backend.indicators import (
+        calculate_indicators,
+        calculate_market_levels,
+        calculate_supertrend,
+    )
 
     allowed_symbols = {"XAUUSD", "EURUSD", "GBPUSD"}
     allowed_intervals = {"5m", "15m", "30m", "1h"}
@@ -353,6 +377,17 @@ def live_indicators(symbol: str = "XAUUSD", interval: str = "5m"):
             for bar in bars
         ]
         indicators = calculate_indicators(candles)
+        levels = calculate_market_levels(candles)
+        supertrend = calculate_supertrend(candles, period=10, multiplier=3.0)
+
+        volumes = [c["volume"] for c in candles]
+        average_volume = sum(volumes[-21:-1]) / 20
+        latest_volume = volumes[-1]
+        volume_confirmed = (
+            average_volume > 0
+            and latest_volume > 0
+            and latest_volume >= average_volume * 1.05
+        )
         latest_time = datetime.fromisoformat(
             bars[-1]["openTime"].replace("Z", "+00:00")
         )
@@ -380,6 +415,16 @@ def live_indicators(symbol: str = "XAUUSD", interval: str = "5m"):
         "candles_received": len(candles),
         "signal": "WAIT",
         "indicators": indicators,
+        "levels": levels,
+        "supertrend": supertrend,
+        "volume_confirmation": volume_confirmed,
+        "volume_analysis": {
+            "source": "BiQuote tickVolume",
+            "latest_tick_volume": round(latest_volume, 2),
+            "average_tick_volume": round(average_volume, 2),
+            "required_tick_volume": round(average_volume * 1.05, 2),
+            "confirmation": "PASS" if volume_confirmed else "FAIL",
+        },
         "message": (
             "Data freshness check passed. Indicator values only; no validated trading signal."
             if is_fresh
@@ -648,3 +693,37 @@ def indian_indices():
         "indices": output,
         "broker_orders_enabled": False,
     }
+
+
+@app.get("/backtest-results")
+async def get_backtest_results(interval: Literal["1h", "4h", "1d"] = "1h"):
+    """Return an allowlisted XAUUSD historical backtest report."""
+    report_files = {
+        "1h": "xauusd_1h_backtest.json",
+        "4h": "xauusd_4h_backtest.json",
+        "1d": "xauusd_1d_backtest.json",
+    }
+
+    report_path = (
+        Path(__file__).resolve().parent.parent
+        / "reports"
+        / report_files[interval]
+    )
+
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Backtest report not found.")
+    except (OSError, json.JSONDecodeError):
+        raise HTTPException(status_code=500, detail="Backtest report could not be read.")
+
+    if (
+        not isinstance(report, dict)
+        or report.get("symbol") != "XAUUSD"
+        or report.get("interval") != interval
+        or not isinstance(report.get("scenarios"), dict)
+        or not isinstance(report.get("methodology"), dict)
+    ):
+        raise HTTPException(status_code=500, detail="Backtest report format is invalid.")
+
+    return report

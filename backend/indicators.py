@@ -19,6 +19,40 @@ def ema(values: list[float], period: int) -> list[Optional[float]]:
     return result
 
 
+
+def dema(values: list[float], period: int = 9) -> list[Optional[float]]:
+    """Calculate Double Exponential Moving Average."""
+    first = ema(values, period)
+    valid_start = next((i for i, value in enumerate(first) if value is not None), None)
+    result = [None] * len(values)
+    if valid_start is None:
+        return result
+
+    second = ema([float(v) for v in first[valid_start:]], period)
+    for i, value in enumerate(second):
+        if value is not None:
+            result[valid_start + i] = 2 * first[valid_start + i] - value
+    return result
+
+
+def bollinger_bands(
+    values: list[float], period: int = 20, deviations: float = 2.0
+) -> dict:
+    """Calculate the latest Bollinger Bands using population standard deviation."""
+    if len(values) < period:
+        return {"upper": None, "middle": None, "lower": None}
+
+    window = values[-period:]
+    middle = sum(window) / period
+    variance = sum((value - middle) ** 2 for value in window) / period
+    standard_deviation = variance ** 0.5
+
+    return {
+        "upper": middle + deviations * standard_deviation,
+        "middle": middle,
+        "lower": middle - deviations * standard_deviation,
+    }
+
 def rsi(values: list[float], period: int = 14) -> list[Optional[float]]:
     result = [None] * len(values)
     if len(values) <= period:
@@ -69,6 +103,8 @@ def calculate_indicators(candles: list[dict]) -> dict:
 
     ema9 = ema(closes, 9)
     ema21 = ema(closes, 21)
+    dema9 = dema(closes, 9)
+    bands = bollinger_bands(closes, 20, 2.0)
     rsi14 = rsi(closes, 14)
 
     fast = ema(closes, 12)
@@ -104,6 +140,10 @@ def calculate_indicators(candles: list[dict]) -> dict:
     return {
         "ema9": round(ema9[-1], 4) if ema9[-1] is not None else None,
         "ema21": round(ema21[-1], 4) if ema21[-1] is not None else None,
+        "dema9": round(dema9[-1], 4) if dema9[-1] is not None else None,
+        "bb_upper": round(bands["upper"], 4) if bands["upper"] is not None else None,
+        "bb_middle": round(bands["middle"], 4) if bands["middle"] is not None else None,
+        "bb_lower": round(bands["lower"], 4) if bands["lower"] is not None else None,
         "rsi14": round(rsi14[-1], 2) if rsi14[-1] is not None else None,
         "macd": round(macd_line[-1], 4) if macd_line[-1] is not None else None,
         "macd_signal": round(macd_signal[-1], 4) if macd_signal[-1] is not None else None,
@@ -140,64 +180,145 @@ def calculate_market_levels(candles: list[dict]) -> dict:
 
 
 def analyze_candles(candles: list[dict]) -> dict:
-    """Experimental rule-based analysis; not a guaranteed trading signal."""
+    """Generate a conservative multi-indicator signal with ATR risk levels."""
     if len(candles) < 35:
         raise ValueError("At least 35 candles are required.")
 
     values = calculate_indicators(candles)
     levels = calculate_market_levels(candles)
     supertrend = calculate_supertrend(candles, period=10, multiplier=3.0)
-    entry = float(candles[-1]["close"])
-    atr_value = levels["atr14"]
 
-    result = {
-        "signal": "WAIT",
-        "entry": None,
-        "stop": None,
-        "target1": None,
-        "target2": None,
-        "target3": None,
+    close = float(candles[-1]["close"])
+    atr_value = levels["atr14"]
+    volumes = [float(c.get("volume", 0)) for c in candles]
+    average_volume = sum(volumes[-21:-1]) / 20
+    latest_volume = volumes[-1]
+
+    volume_confirmed = (
+        average_volume > 0
+        and latest_volume > 0
+        and latest_volume >= average_volume * 1.05
+    )
+
+    volume_analysis = {
+        "source": "BiQuote tickVolume",
+        "latest_tick_volume": round(latest_volume, 2),
+        "average_tick_volume": round(average_volume, 2),
+        "required_tick_volume": round(average_volume * 1.05, 2),
+        "confirmation": "PASS" if volume_confirmed else "FAIL",
+    }
+
+    required_values = (
+        values["ema9"], values["ema21"], values["dema9"],
+        values["vwap"], values["macd"], values["macd_signal"],
+        values["rsi14"], values["bb_middle"],
+        supertrend["value"], atr_value,
+    )
+
+    if any(value is None for value in required_values) or atr_value <= 0:
+        return {
+            "signal": "WAIT",
+            "entry": None, "stop": None,
+            "target1": None, "target2": None, "target3": None,
+            "indicators": values, "levels": levels,
+            "supertrend": supertrend,
+            "volume_confirmation": volume_confirmed,
+            "volume_analysis": volume_analysis,
+            "message": "Required indicator data is unavailable. WAIT.",
+        }
+
+    buy_checks = {
+        "ema_trend": values["ema9"] > values["ema21"],
+        "dema_trend": values["dema9"] > values["ema9"],
+        "above_vwap": close > values["vwap"],
+        "macd_bullish": values["macd"] > values["macd_signal"],
+        "rsi_bullish": 52 <= values["rsi14"] <= 68,
+        "supertrend_bullish": supertrend["trend"] == "BULLISH",
+        "above_bollinger_mid": close > values["bb_middle"],
+        "volume_confirmed": volume_confirmed,
+    }
+
+    sell_checks = {
+        "ema_trend": values["ema9"] < values["ema21"],
+        "dema_trend": values["dema9"] < values["ema9"],
+        "below_vwap": close < values["vwap"],
+        "macd_bearish": values["macd"] < values["macd_signal"],
+        "rsi_bearish": 32 <= values["rsi14"] <= 48,
+        "supertrend_bearish": supertrend["trend"] == "BEARISH",
+        "below_bollinger_mid": close < values["bb_middle"],
+        "volume_confirmed": volume_confirmed,
+    }
+
+    buy_score = sum(buy_checks.values())
+    sell_score = sum(sell_checks.values())
+
+    signal = "WAIT"
+    entry = stop = target1 = target2 = target3 = None
+
+    buy_mandatory = (
+        buy_checks["rsi_bullish"]
+        and buy_checks["ema_trend"]
+        and buy_checks["supertrend_bullish"]
+        and buy_checks["volume_confirmed"]
+    )
+    sell_mandatory = (
+        sell_checks["rsi_bearish"]
+        and sell_checks["ema_trend"]
+        and sell_checks["supertrend_bearish"]
+        and sell_checks["volume_confirmed"]
+    )
+
+    buy_support = sum(
+        buy_checks[key]
+        for key in ("dema_trend", "above_vwap", "macd_bullish", "above_bollinger_mid")
+    )
+    sell_support = sum(
+        sell_checks[key]
+        for key in ("dema_trend", "below_vwap", "macd_bearish", "below_bollinger_mid")
+    )
+
+    if buy_mandatory and buy_support >= 3:
+        signal = "BUY"
+        entry = close
+        stop = entry - atr_value
+        target1 = entry + atr_value
+        target2 = entry + (2 * atr_value)
+        target3 = entry + (3 * atr_value)
+
+    elif sell_mandatory and sell_support >= 3:
+        signal = "SELL"
+        entry = close
+        stop = entry + atr_value
+        target1 = entry - atr_value
+        target2 = entry - (2 * atr_value)
+        target3 = entry - (3 * atr_value)
+
+    if signal == "WAIT":
+        message = "Indicator conditions are not sufficiently aligned. WAIT."
+    else:
+        message = (
+            f"{signal} conditions confirmed by {max(buy_score, sell_score)}/8 checks. "
+            "Educational technical signal; not a guarantee of profit."
+        )
+
+    return {
+        "signal": signal,
+        "entry": round(entry, 4) if entry is not None else None,
+        "stop": round(stop, 4) if stop is not None else None,
+        "target1": round(target1, 4) if target1 is not None else None,
+        "target2": round(target2, 4) if target2 is not None else None,
+        "target3": round(target3, 4) if target3 is not None else None,
         "indicators": values,
         "levels": levels,
         "supertrend": supertrend,
-        "message": "Conditions are not sufficiently aligned. WAIT.",
+        "volume_confirmation": volume_confirmed,
+        "volume_analysis": volume_analysis,
+        "buy_score": buy_score,
+        "sell_score": sell_score,
+        "buy_checks": buy_checks,
+        "sell_checks": sell_checks,
+        "message": message,
     }
-
-    required = [
-        values["ema9"], values["ema21"], values["rsi14"],
-        values["macd"], values["macd_signal"], values["vwap"], atr_value,
-    ]
-    if any(value is None for value in required) or atr_value <= 0:
-        return result
-
-    buy = (
-        values["ema9"] > values["ema21"]
-        and 52 <= values["rsi14"] <= 68
-        and values["macd"] > values["macd_signal"]
-        and entry > values["vwap"]
-    )
-    sell = (
-        values["ema9"] < values["ema21"]
-        and 32 <= values["rsi14"] <= 48
-        and values["macd"] < values["macd_signal"]
-        and entry < values["vwap"]
-    )
-
-    if not (buy or sell):
-        return result
-
-    risk = atr_value * 1.5
-    direction = 1 if buy else -1
-    result.update({
-        "signal": "BUY" if buy else "SELL",
-        "entry": round(entry, 4),
-        "stop": round(entry - direction * risk, 4),
-        "target1": round(entry + direction * risk, 4),
-        "target2": round(entry + direction * risk * 2, 4),
-        "target3": round(entry + direction * risk * 3, 4),
-        "message": "Experimental rule-based setup. Verify independently; not financial advice.",
-    })
-    return result
 
 
 def calculate_supertrend(

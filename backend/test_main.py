@@ -45,16 +45,15 @@ def post_image(data: bytes, content_type: str):
     )
 
 
-def test_health_returns_ok_and_reports_unconnected_integrations():
+def test_health_returns_ok_and_reports_integration_status():
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {
-        "status": "ok",
-        "analysis_connected": False,
-        "market_data_connected": False,
-        "broker_orders_enabled": False,
-    }
+    data = response.json()
+    assert data["status"] == "ok"
+    assert isinstance(data["analysis_connected"], bool)
+    assert isinstance(data["market_data_connected"], bool)
+    assert data["broker_orders_enabled"] is False
 
 
 @pytest.mark.parametrize(
@@ -69,7 +68,13 @@ def test_health_returns_ok_and_reports_unconnected_integrations():
 def test_supported_decoded_images_return_wait_and_null_price_levels(
     content_type: str,
     image_format: str,
+    monkeypatch: pytest.MonkeyPatch,
 ):
+    from backend import main
+    monkeypatch.setattr(
+        main, "run_local_vision",
+        lambda image_data: "Mock chart description",
+    )
     response = post_image(make_image(image_format), content_type)
 
     assert response.status_code == 200
@@ -133,3 +138,77 @@ def test_animation_frame_limit_is_enforced(monkeypatch: pytest.MonkeyPatch):
     response = post_image(make_animated_gif(frame_count=2), "image/gif")
 
     assert response.status_code == 413
+
+
+def make_stale_market_payload():
+    from datetime import datetime, timedelta, timezone
+
+    start = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    bars = []
+    for i in range(50):
+        close = 1.1 + i * 0.0001
+        bars.append({
+            "openTime": (start + timedelta(minutes=5 * i)).isoformat().replace("+00:00", "Z"),
+            "open": close - 0.00005,
+            "high": close + 0.0002,
+            "low": close - 0.0002,
+            "close": close,
+            "tickVolume": 100 + i,
+        })
+    return {"bars": bars}
+
+
+class MockMarketResponse:
+    def __init__(self, payload):
+        import json
+        self.data = json.dumps(payload).encode("utf-8")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def read(self):
+        return self.data
+
+
+def mock_stale_market_data(monkeypatch):
+    import urllib.request
+
+    payload = make_stale_market_payload()
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda *args, **kwargs: MockMarketResponse(payload),
+    )
+
+
+def test_live_indicators_marks_old_market_data_stale(monkeypatch):
+    mock_stale_market_data(monkeypatch)
+
+    response = client.get("/live-indicators?symbol=EURUSD&interval=5m")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "STALE"
+    assert data["signal"] == "WAIT"
+    assert data["age_minutes"] > 15
+    assert "stale" in data["message"].lower()
+
+
+def test_technical_analysis_returns_wait_without_price_levels_when_stale(monkeypatch):
+    mock_stale_market_data(monkeypatch)
+
+    response = client.get("/technical-analysis?symbol=EURUSD&interval=5m")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "STALE"
+    assert data["signal"] == "WAIT"
+    assert data["entry"] is None
+    assert data["stop"] is None
+    assert data["target1"] is None
+    assert data["target2"] is None
+    assert data["target3"] is None
+    assert "stale" in data["message"].lower()

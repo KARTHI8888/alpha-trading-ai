@@ -114,6 +114,10 @@
         <span id="signal" class="signal">WAIT</span>
       </div>
       <p id="result-note" class="result-note" data-i18n="waitNote">No verified chart analysis is available. WAIT is the safe placeholder state.</p>
+      <div class="vision-insight" aria-live="polite">
+        <h3>Local AI Chart Insight</h3>
+        <p id="vision-insight" hidden></p>
+      </div>
       <div class="levels">
         <div><span data-i18n="entry">Entry Price</span><strong id="entry">—</strong></div>
         <div><span data-i18n="stop">Stop Loss</span><strong id="stop">—</strong></div>
@@ -129,21 +133,32 @@
         </div>
         <div class="indicator-grid">
           <div><span>EMA 9</span><strong id="ema9">—</strong></div>
-          <div><span>EMA 21</span><strong id="ema21">—</strong></div>
-          <div><span>RSI 14</span><strong id="rsi14">—</strong></div>
-          <div><span>MACD</span><strong id="macd">—</strong></div>
-          <div><span>MACD Signal</span><strong id="macd-signal">—</strong></div>
-          <div><span>VWAP</span><strong id="vwap">—</strong></div>
-          <div><span>Supertrend</span><strong id="supertrend">—</strong></div>
-          <div><span>Supertrend Trend</span><strong id="supertrend-trend">—</strong></div>
-          <div><span>ORB High</span><strong id="orb-high">—</strong></div>
-          <div><span>ORB Low</span><strong id="orb-low">—</strong></div>
-          <div><span>ORB Breakout</span><strong id="orb-breakout">NOT AVAILABLE</strong></div>
-          <div><span>CPR Pivot</span><strong id="cpr-pivot">—</strong></div>
-          <div><span>CPR TC</span><strong id="cpr-tc">—</strong></div>
-          <div><span>CPR BC</span><strong id="cpr-bc">—</strong></div>
-        </div>
+<div><span>EMA 21</span><strong id="ema21">—</strong></div>
+<div><span>DEMA 9</span><strong id="dema9">—</strong></div>
+<div><span>RSI 14</span><strong id="rsi14">—</strong></div>
+<div><span>MACD</span><strong id="macd">—</strong></div>
+<div><span>MACD Signal</span><strong id="macd-signal">—</strong></div>
+<div><span>VWAP</span><strong id="vwap">—</strong></div>
+<div><span>Bollinger Upper</span><strong id="bb-upper">—</strong></div>
+<div><span>Bollinger Middle</span><strong id="bb-middle">—</strong></div>
+<div><span>Bollinger Lower</span><strong id="bb-lower">—</strong></div>
+<div><span>Supertrend</span><strong id="supertrend">—</strong></div>
+<div><span>Supertrend Trend</span><strong id="supertrend-trend">—</strong></div>
+<div><span>ATR 14</span><strong id="atr14">—</strong></div>
+<div><span>Support</span><strong id="support">—</strong></div>
+<div><span>Resistance</span><strong id="resistance">—</strong></div>
+</div>
         <p id="market-data-note" class="muted">Waiting for market data...</p>
+        <div class="volume-analysis">
+          <h3>Volume Analysis (Tick Volume)</h3>
+          <div class="indicator-grid">
+            <div><span>Latest Tick Volume</span><strong id="latest-tick-volume">—</strong></div>
+            <div><span>Average Tick Volume (20)</span><strong id="average-tick-volume">—</strong></div>
+            <div><span>Required Volume (105%)</span><strong id="required-tick-volume">—</strong></div>
+            <div><span>Volume Confirmation</span><strong id="volume-confirmation">—</strong></div>
+          </div>
+          <p class="muted">Tick volume measures market activity; it is not centralized exchange volume.</p>
+        </div>
       </div>
       <div class="connection-state">
         <div>Local AI: <strong id="local-ai-status">CHECKING</strong></div>
@@ -151,6 +166,80 @@
         <div>Trading Signal: <strong id="signal-status">WAIT</strong></div>
         <div>Broker Orders: <strong id="broker-status">DISABLED</strong></div>
       </div>
+    </section>
+
+
+    <section class="panel backtest-panel" id="backtest-panel" aria-labelledby="backtest-title">
+      <div class="section-heading">
+        <div>
+          <span class="step">03</span>
+          <h2 id="backtest-title" data-i18n="backtestTitle">Historical Backtest Dashboard</h2>
+        </div>
+        <span class="tag">XAUUSD</span>
+      </div>
+
+      <p class="muted" data-i18n="backtestIntro">Historical strategy results. Not a live trading signal.</p>
+
+      <div class="fields">
+        <label class="field">
+          <span data-i18n="backtestTimeframe">Backtest timeframe</span>
+          <select id="backtest-interval">
+            <option value="1h">1 Hour</option>
+            <option value="4h">4 Hours</option>
+            <option value="1d">1 Day</option>
+          </select>
+        </label>
+        <label class="field">
+          <span data-i18n="backtestTarget">Target scenario</span>
+          <select id="backtest-target">
+            <option value="target1">TP1 (1 ATR)</option>
+            <option value="target2">TP2 (2 ATR)</option>
+            <option value="target3">TP3 (3 ATR)</option>
+          </select>
+        </label>
+      </div>
+
+      <p id="backtest-status" class="request-message" role="status" aria-live="polite">Loading backtest report...</p>
+
+      <div class="backtest-grid">
+        <div><span data-i18n="grossPnl">Gross PnL (R)</span><strong id="bt-gross-pnl">—</strong></div>
+        <div><span data-i18n="netPnl">Net PnL (R)</span><strong id="bt-net-pnl">—</strong></div>
+        <div><span data-i18n="grossWinRate">Gross Win Rate</span><strong id="bt-gross-win-rate">—</strong></div>
+        <div><span data-i18n="netWinRate">Net Win Rate</span><strong id="bt-net-win-rate">—</strong></div>
+        <div><span data-i18n="netProfitFactor">Net Profit Factor</span><strong id="bt-profit-factor">—</strong></div>
+        <div><span data-i18n="netDrawdown">Net Max Drawdown (R)</span><strong id="bt-drawdown">—</strong></div>
+        <div><span data-i18n="closedTrades">Closed Trades</span><strong id="bt-closed-trades">—</strong></div>
+        <div><span data-i18n="openTrades">Open Trades</span><strong id="bt-open-trades">—</strong></div>
+      </div>
+
+      <div class="backtest-meta">
+        <p><span data-i18n="dataRange">Data range</span>: <strong id="bt-data-range">—</strong></p>
+        <p><span data-i18n="candlesTested">Candles tested</span>: <strong id="bt-candles">—</strong></p>
+        <p><span data-i18n="costStatus">Execution costs</span>: <strong id="bt-cost-status">—</strong></p>
+        <p id="bt-cost-details" class="muted">—</p>
+      </div>
+
+      <h3 class="backtest-trades-title" data-i18n="tradeDetails">Trade details</h3>
+      <div class="backtest-table-wrap">
+        <table class="backtest-table">
+          <thead>
+            <tr>
+              <th data-i18n="tradeTime">Entry time</th>
+              <th data-i18n="tradeSide">Side</th>
+              <th data-i18n="tradeEntry">Entry</th>
+              <th data-i18n="tradeExit">Exit</th>
+              <th data-i18n="tradeStop">Stop</th>
+              <th data-i18n="tradeTarget">Target</th>
+              <th data-i18n="tradeOutcome">Outcome</th>
+              <th data-i18n="tradeNetPnl">Net PnL</th>
+            </tr>
+          </thead>
+          <tbody id="backtest-trades-body">
+            <tr><td colspan="8">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted" data-i18n="backtestDisclaimer">Backtest results are historical and experimental. Costs may be disabled. MID OHLC is not Bid/Ask execution data.</p>
     </section>
 
     <section class="features">
@@ -168,9 +257,10 @@
         <span>Supertrend</span>
         <span>ORB</span>
         <span>CPR</span>
-        <span data-i18n="options">CE BUY / PE BUY</span>
+        <span>CE BUY</span>
+        <span>PE BUY</span>
       </div>
-      <p class="muted" data-i18n="plannedNote">Supertrend calculation is available. ORB and CPR require verified Indian market data.</p>
+      <p class="muted" data-i18n="plannedNote">Forex/Gold technical indicators are informational only. No verified trading signal is provided.</p>
     </section>
 
     <footer>

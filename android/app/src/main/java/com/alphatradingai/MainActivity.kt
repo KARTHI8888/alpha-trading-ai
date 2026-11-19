@@ -4,8 +4,12 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Rect
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Base64
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
@@ -13,6 +17,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.view.PixelCopy
 import java.io.ByteArrayOutputStream
 
 class MainActivity : Activity() {
@@ -24,6 +29,32 @@ class MainActivity : Activity() {
         private const val FILE_CHOOSER_REQUEST = 1001
     }
 
+    private fun deliverBitmap(bitmap: Bitmap) {
+        val output = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, output)
+        bitmap.recycle()
+
+        val encoded = Base64.encodeToString(
+            output.toByteArray(),
+            Base64.NO_WRAP
+        )
+
+        webView.evaluateJavascript(
+            "window.onNativeChartCaptured && window.onNativeChartCaptured('$encoded')",
+            null
+        )
+    }
+
+    private fun captureFallback() {
+        val bitmap = Bitmap.createBitmap(
+            webView.width,
+            webView.height,
+            Bitmap.Config.ARGB_8888
+        )
+        webView.draw(Canvas(bitmap))
+        deliverBitmap(bitmap)
+    }
+
     inner class ChartBridge {
         @JavascriptInterface
         fun captureChart() {
@@ -32,26 +63,40 @@ class MainActivity : Activity() {
                     webView.width <= 0 || webView.height <= 0
                 ) return@runOnUiThread
 
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                    captureFallback()
+                    return@runOnUiThread
+                }
+
                 val bitmap = Bitmap.createBitmap(
                     webView.width,
                     webView.height,
                     Bitmap.Config.ARGB_8888
                 )
 
-                webView.draw(Canvas(bitmap))
+                val location = IntArray(2)
+                webView.getLocationInWindow(location)
 
-                val output = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, output)
-                bitmap.recycle()
-
-                val encoded = Base64.encodeToString(
-                    output.toByteArray(),
-                    Base64.NO_WRAP
+                val rect = Rect(
+                    location[0],
+                    location[1],
+                    location[0] + webView.width,
+                    location[1] + webView.height
                 )
 
-                webView.evaluateJavascript(
-                    "window.onNativeChartCaptured && window.onNativeChartCaptured('$encoded')",
-                    null
+                PixelCopy.request(
+                    window,
+                    rect,
+                    bitmap,
+                    { result ->
+                        if (result == PixelCopy.SUCCESS) {
+                            deliverBitmap(bitmap)
+                        } else {
+                            bitmap.recycle()
+                            captureFallback()
+                        }
+                    },
+                    Handler(Looper.getMainLooper())
                 )
             }
         }
