@@ -449,9 +449,11 @@ window.onNativeChartCaptured = function (base64) {
 };
 
 $("capture-chart").addEventListener("click", () => {
-  if (window.AndroidBridge && window.AndroidBridge.captureChart) {
+  const chart = $("live-chart").closest(".chart-frame");
+  const rect = chart.getBoundingClientRect();
+  if (window.AndroidBridge && window.AndroidBridge.captureChart && rect.width > 0 && rect.height > 0) {
     $("capture-message").textContent = currentLanguage().sending;
-    window.AndroidBridge.captureChart();
+    window.AndroidBridge.captureChart(rect.left, rect.top, rect.width, rect.height);
   } else {
     $("capture-message").textContent = currentLanguage().captureFailed;
   }

@@ -57,31 +57,31 @@ class MainActivity : Activity() {
 
     inner class ChartBridge {
         @JavascriptInterface
-        fun captureChart() {
+        fun captureChart(x: Float, y: Float, width: Float, height: Float) {
             runOnUiThread {
                 if (!::webView.isInitialized ||
-                    webView.width <= 0 || webView.height <= 0
+                    webView.width <= 0 || webView.height <= 0 ||
+                    width <= 0 || height <= 0 ||
+                    Build.VERSION.SDK_INT < Build.VERSION_CODES.O
                 ) return@runOnUiThread
 
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-                    captureFallback()
-                    return@runOnUiThread
-                }
-
-                val bitmap = Bitmap.createBitmap(
-                    webView.width,
-                    webView.height,
-                    Bitmap.Config.ARGB_8888
-                )
-
+                val scale = resources.displayMetrics.density * webView.scale
                 val location = IntArray(2)
                 webView.getLocationInWindow(location)
 
-                val rect = Rect(
-                    location[0],
-                    location[1],
-                    location[0] + webView.width,
-                    location[1] + webView.height
+                val decor = window.decorView
+                val left = (location[0] + x * scale).toInt().coerceIn(0, decor.width)
+                val top = (location[1] + y * scale).toInt().coerceIn(0, decor.height)
+                val right = (location[0] + (x + width) * scale).toInt().coerceIn(0, decor.width)
+                val bottom = (location[1] + (y + height) * scale).toInt().coerceIn(0, decor.height)
+
+                val rect = Rect(left, top, right, bottom)
+                if (rect.width() <= 0 || rect.height() <= 0) return@runOnUiThread
+
+                val bitmap = Bitmap.createBitmap(
+                    rect.width(),
+                    rect.height(),
+                    Bitmap.Config.ARGB_8888
                 )
 
                 PixelCopy.request(
@@ -93,7 +93,6 @@ class MainActivity : Activity() {
                             deliverBitmap(bitmap)
                         } else {
                             bitmap.recycle()
-                            captureFallback()
                         }
                     },
                     Handler(Looper.getMainLooper())
