@@ -1,6 +1,15 @@
 const translations = {
   en: {
     language: "Language",
+    appHealthTitle: "APP HEALTH",
+    healthBackend: "Backend API",
+    healthAI: "Local AI (SmolVLM)",
+    healthMarket: "Live Market Data",
+    healthCapture: "Chart Capture",
+    healthBacktest: "Backtest Engine",
+    healthBroker: "Broker Orders",
+    healthNote: "Status is based on actual API responses and feature tests.",
+
     workspace: "CHART ANALYSIS WORKSPACE",
     title: "Trade with a clearer view.",
     subtitle: "Upload a chart screenshot to prepare an analysis request.",
@@ -62,6 +71,15 @@ const translations = {
   },
   ta: {
     language: "மொழி",
+    appHealthTitle: "செயலி செயல்நிலை",
+    healthBackend: "Backend API",
+    healthAI: "Local AI (SmolVLM)",
+    healthMarket: "நேரடி சந்தைத் தரவு",
+    healthCapture: "Chart Capture",
+    healthBacktest: "Backtest Engine",
+    healthBroker: "Broker Orders",
+    healthNote: "உண்மையான API பதில்கள் மற்றும் செயல்பாட்டுச் சோதனைகளின் அடிப்படையில் நிலை காட்டப்படுகிறது.",
+
     workspace: "விளக்கப்படப் பகுப்பாய்வுப் பணியிடம்",
     title: "தெளிவான பார்வையுடன் செயல்படுங்கள்.",
     subtitle: "பகுப்பாய்வு கோரிக்கைக்காக விளக்கப்படப் படத்தைப் பதிவேற்றவும்.",
@@ -185,6 +203,7 @@ async function loadBacktestResults() {
   const language = currentLanguage();
 
   status.textContent = language.backtestLoading;
+  setAppHealthStatus("app-health-backtest", "CHECKING", "UNKNOWN");
 
   try {
     const response = await fetch(
@@ -258,8 +277,10 @@ async function loadBacktestResults() {
     }
 
     status.textContent = `${language.backtestLoaded} · ${data.symbol} · ${interval.toUpperCase()} · ${target.toUpperCase()}`;
+    setAppHealthStatus("app-health-backtest", "READY", "PASS");
   } catch (error) {
     status.textContent = `${language.backtestError} ${error.message || ""}`;
+    setAppHealthStatus("app-health-backtest", "FAILED", "FAIL");
   }
 }
 
@@ -276,7 +297,54 @@ function updateLiveChart() {
     `https://www.tradingview.com/widgetembed/?symbol=${encodeURIComponent(symbol)}&interval=${interval}&timezone=Asia%2FKolkata&theme=dark&style=1&locale=en&hide_top_toolbar=false&allow_symbol_change=false&save_image=false`;
 }
 
-async function loadBackendHealth() { const base = $("api-url").value.trim().replace(/[/]+$/, ""); try { const response = await fetch(`${base}/health`); const data = await response.json(); $("local-ai-status").textContent = response.ok && data.analysis_connected ? "CONNECTED" : "DISCONNECTED"; $("broker-status").textContent = data.broker_orders_enabled ? "ENABLED" : "DISABLED"; } catch (error) { $("local-ai-status").textContent = "DISCONNECTED"; $("broker-status").textContent = "DISABLED"; } }
+function setAppHealthStatus(id, value, state) {
+  const element = $(id);
+  if (!element) return;
+  element.textContent = value;
+  element.dataset.status = state || value;
+}
+
+async function loadBackendHealth() {
+  const base = $("api-url").value.trim().replace(/[/]+$/, "");
+  setAppHealthStatus("app-health-backend", "CHECKING", "UNKNOWN");
+  setAppHealthStatus("app-health-ai", "CHECKING", "UNKNOWN");
+  setAppHealthStatus("app-health-market", "CHECKING", "UNKNOWN");
+
+  try {
+    const response = await fetch(`${base}/health`, { cache: "no-store" });
+    const data = await response.json().catch(() => ({}));
+    const backendOK = response.ok && data.status === "ok";
+
+    setAppHealthStatus(
+      "app-health-backend",
+      backendOK ? "CONNECTED" : "DISCONNECTED",
+      backendOK ? "PASS" : "FAIL"
+    );
+    setAppHealthStatus(
+      "app-health-ai",
+      backendOK && data.analysis_connected ? "CONNECTED" : "UNAVAILABLE",
+      backendOK && data.analysis_connected ? "PASS" : "FAIL"
+    );
+    setAppHealthStatus(
+      "app-health-market",
+      backendOK && data.market_data_connected ? "AVAILABLE" : "UNAVAILABLE",
+      backendOK && data.market_data_connected ? "PASS" : "FAIL"
+    );
+
+    $("local-ai-status").textContent =
+      backendOK && data.analysis_connected ? "CONNECTED" : "DISCONNECTED";
+    $("broker-status").textContent =
+      data.broker_orders_enabled === true ? "ENABLED" : "DISABLED";
+    setAppHealthStatus("app-health-broker", "DISABLED", "DISABLED");
+  } catch (error) {
+    setAppHealthStatus("app-health-backend", "DISCONNECTED", "FAIL");
+    setAppHealthStatus("app-health-ai", "UNAVAILABLE", "FAIL");
+    setAppHealthStatus("app-health-market", "UNAVAILABLE", "FAIL");
+    $("local-ai-status").textContent = "DISCONNECTED";
+    $("broker-status").textContent = "DISABLED";
+    setAppHealthStatus("app-health-broker", "DISABLED", "DISABLED");
+  }
+}
 
 async function loadLiveIndicators() {
   const status = $("market-status");
@@ -484,6 +552,7 @@ window.onNativeChartCaptured = function (base64) {
     };
     preview.onerror = () => {
       $("capture-message").textContent = "Captured image preview could not be displayed.";
+      setAppHealthStatus("app-health-capture", "FAILED", "FAIL");
     };
     preview.src = imageUrl;
     preview.hidden = false;
@@ -496,8 +565,10 @@ window.onNativeChartCaptured = function (base64) {
     $("vision-insight").hidden = true;
     setRequestMessage("");
     $("capture-message").textContent = currentLanguage().captureReady;
+    setAppHealthStatus("app-health-capture", "READY", "PASS");
   } catch (error) {
     $("capture-message").textContent = currentLanguage().captureFailed;
+    setAppHealthStatus("app-health-capture", "FAILED", "FAIL");
   }
 };
 
@@ -506,9 +577,11 @@ $("capture-chart").addEventListener("click", () => {
   const rect = chart.getBoundingClientRect();
   if (window.AndroidBridge && window.AndroidBridge.captureChart && rect.width > 0 && rect.height > 0) {
     $("capture-message").textContent = currentLanguage().sending;
+    setAppHealthStatus("app-health-capture", "CAPTURING", "UNKNOWN");
     window.AndroidBridge.captureChart(rect.left, rect.top, rect.width, rect.height);
   } else {
     $("capture-message").textContent = currentLanguage().captureFailed;
+    setAppHealthStatus("app-health-capture", "UNAVAILABLE", "FAIL");
   }
 });
 
@@ -732,7 +805,7 @@ $("analyze").addEventListener("click", async () => {
 
 $("backtest-interval").addEventListener("change", loadBacktestResults);
 $("backtest-target").addEventListener("change", loadBacktestResults);
-$("api-url").addEventListener("change", loadBacktestResults);
+$("api-url").addEventListener("change", () => { loadBackendHealth(); loadBacktestResults(); });
 
 renderLanguage();
 loadBacktestResults();

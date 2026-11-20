@@ -37,6 +37,43 @@
       </div>
     </section>
 
+    <section class="panel app-health-panel" aria-labelledby="app-health-title">
+      <div class="section-heading">
+        <div>
+          <span class="step">00</span>
+          <h2 id="app-health-title" data-i18n="appHealthTitle">APP HEALTH</h2>
+        </div>
+        <span class="tag">SYSTEM STATUS</span>
+      </div>
+      <div class="app-health-grid">
+        <div class="health-card">
+          <span data-i18n="healthBackend">Backend API</span>
+          <strong id="app-health-backend" data-status="UNKNOWN">CHECKING</strong>
+        </div>
+        <div class="health-card">
+          <span data-i18n="healthAI">Local AI (SmolVLM)</span>
+          <strong id="app-health-ai" data-status="UNKNOWN">CHECKING</strong>
+        </div>
+        <div class="health-card">
+          <span data-i18n="healthMarket">Live Market Data</span>
+          <strong id="app-health-market" data-status="UNKNOWN">CHECKING</strong>
+        </div>
+        <div class="health-card">
+          <span data-i18n="healthCapture">Chart Capture</span>
+          <strong id="app-health-capture" data-status="UNKNOWN">NOT TESTED</strong>
+        </div>
+        <div class="health-card">
+          <span data-i18n="healthBacktest">Backtest Engine</span>
+          <strong id="app-health-backtest" data-status="UNKNOWN">CHECKING</strong>
+        </div>
+        <div class="health-card">
+          <span data-i18n="healthBroker">Broker Orders</span>
+          <strong id="app-health-broker" data-status="DISABLED">DISABLED</strong>
+        </div>
+      </div>
+      <p class="muted" data-i18n="healthNote">Status is based on actual API responses and feature tests.</p>
+    </section>
+
     <section class="panel" aria-labelledby="live-chart-title">
       <div class="section-heading">
         <div>
