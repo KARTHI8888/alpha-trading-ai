@@ -40,21 +40,19 @@ def test_spread_and_slippage_adjust_execution_prices(signal):
         assert exit_price == pytest.approx(2002.18)
 
 
-def test_net_pnl_deducts_commission():
+def test_net_pnl_deducts_spread_and_slippage_only():
     result = calculate_net_pnl(
         signal="BUY",
         entry=2000.0,
         exit_price=2002.0,
         spread_price=0.26,
         slippage_per_side=0.05,
-        commission_price_equivalent=0.10,
     )
 
     assert result["gross_pnl"] == pytest.approx(2.0)
     assert result["spread_cost"] == pytest.approx(0.26)
     assert result["slippage_cost"] == pytest.approx(0.10)
-    assert result["commission_cost"] == pytest.approx(0.10)
-    assert result["net_pnl"] == pytest.approx(1.54)
+    assert result["net_pnl"] == pytest.approx(1.64)
 
 
 def test_calculate_net_pnl_for_sell_trade():
@@ -64,14 +62,12 @@ def test_calculate_net_pnl_for_sell_trade():
         exit_price=1998.0,
         spread_price=0.26,
         slippage_per_side=0.05,
-        commission_price_equivalent=0.10,
     )
 
     assert result["gross_pnl"] == pytest.approx(2.0)
     assert result["spread_cost"] == pytest.approx(0.26)
     assert result["slippage_cost"] == pytest.approx(0.10)
-    assert result["commission_cost"] == pytest.approx(0.10)
-    assert result["net_pnl"] == pytest.approx(1.54)
+    assert result["net_pnl"] == pytest.approx(1.64)
 
 
 def test_calculate_net_pnl_rejects_negative_costs():
@@ -131,7 +127,6 @@ def test_run_backtest_applies_execution_costs(monkeypatch):
         candles,
         spread_price=0.26,
         slippage_per_side=0.05,
-        commission_price_equivalent=0.10,
         price_basis="MID",
     )
 
@@ -141,8 +136,7 @@ def test_run_backtest_applies_execution_costs(monkeypatch):
     assert trade["gross_pnl"] == pytest.approx(1.0)
     assert trade["spread_cost"] == pytest.approx(0.26)
     assert trade["slippage_cost"] == pytest.approx(0.10)
-    assert trade["commission_cost"] == pytest.approx(0.10)
-    assert trade["net_pnl"] == pytest.approx(0.54)
+    assert trade["net_pnl"] == pytest.approx(0.64)
 
 
 def test_run_backtest_rejects_costs_without_mid_price_basis():
@@ -205,3 +199,54 @@ def test_calculate_metrics_tracks_gross_and_net_results():
     assert metrics["net_profit_factor"] == pytest.approx(0.3333)
     assert metrics["net_profit_r"] == pytest.approx(-1.0)
     assert metrics["net_max_drawdown_r"] == pytest.approx(1.5)
+
+
+def test_run_backtest_counts_signals_only_after_start_index(monkeypatch):
+    from backend import backtest
+
+    candles = [
+        {
+            "open": 2000.0,
+            "high": 2000.5,
+            "low": 1999.5,
+            "close": 2000.0,
+            "volume": 100.0,
+        }
+        for _ in range(40)
+    ]
+
+    monkeypatch.setattr(
+        backtest,
+        "analyze_candles",
+        lambda history: {
+            "signal": "BUY",
+            "levels": {"atr14": 1.0},
+        },
+    )
+
+    report = backtest.run_backtest(
+        candles,
+        signal_start_index=36,
+    )
+
+    counts = report["scenarios"]["target1"]["signal_counts"]
+    assert counts["BUY"] == 3
+    assert counts["SELL"] == 0
+
+
+def test_run_backtest_rejects_invalid_signal_start_index():
+    from backend.backtest import run_backtest
+
+    candles = [
+        {
+            "open": 2000.0,
+            "high": 2002.0,
+            "low": 1999.0,
+            "close": 2001.0,
+            "volume": 100.0,
+        }
+        for _ in range(40)
+    ]
+
+    with pytest.raises(ValueError, match="signal_start_index"):
+        run_backtest(candles, signal_start_index=39)

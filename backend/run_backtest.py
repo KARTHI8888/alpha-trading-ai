@@ -15,9 +15,6 @@ HISTORY_LIMIT = 1000
 # Optional execution-cost assumptions (price units, not account currency).
 SPREAD_PRICE = float(os.getenv("ALPHA_SPREAD_PRICE", "0"))
 SLIPPAGE_PER_SIDE = float(os.getenv("ALPHA_SLIPPAGE_PER_SIDE", "0"))
-COMMISSION_PRICE_EQUIVALENT = float(
-    os.getenv("ALPHA_COMMISSION_PRICE_EQUIVALENT", "0")
-)
 
 
 def fetch_historical_candles(interval: str) -> list[dict]:
@@ -74,7 +71,6 @@ def main():
                 candles,
                 spread_price=SPREAD_PRICE,
                 slippage_per_side=SLIPPAGE_PER_SIDE,
-                commission_price_equivalent=COMMISSION_PRICE_EQUIVALENT,
                 price_basis="MID",
             )
 

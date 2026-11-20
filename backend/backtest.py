@@ -87,7 +87,6 @@ def calculate_net_pnl(
     exit_price: float,
     spread_price: float = 0.0,
     slippage_per_side: float = 0.0,
-    commission_price_equivalent: float = 0.0,
 ) -> dict[str, float]:
     """Calculate net PnL using adverse execution prices from MID prices."""
     if signal not in ("BUY", "SELL"):
@@ -98,7 +97,6 @@ def calculate_net_pnl(
         exit_price,
         spread_price,
         slippage_per_side,
-        commission_price_equivalent,
     )
     if not all(math.isfinite(float(value)) for value in values):
         raise ValueError("Prices and costs must be finite.")
@@ -123,8 +121,7 @@ def calculate_net_pnl(
 
     spread_cost = spread_price
     slippage_cost = slippage_per_side * 2
-    commission_cost = commission_price_equivalent
-    net_pnl = execution_pnl - commission_cost
+    net_pnl = execution_pnl
 
     return {
         "gross_pnl": round(gross_pnl, 6),
@@ -133,7 +130,6 @@ def calculate_net_pnl(
         "execution_pnl": round(execution_pnl, 6),
         "spread_cost": round(spread_cost, 6),
         "slippage_cost": round(slippage_cost, 6),
-        "commission_cost": round(commission_cost, 6),
         "net_pnl": round(net_pnl, 6),
     }
 
@@ -315,11 +311,11 @@ def run_backtest(
     candles: list[dict[str, Any]],
     spread_price: float = 0.0,
     slippage_per_side: float = 0.0,
-    commission_price_equivalent: float = 0.0,
     price_basis: str | None = None,
+    signal_start_index: int | None = None,
 ) -> dict[str, Any]:
     """Run TP scenarios with optional costs, requiring explicit MID basis."""
-    costs = (spread_price, slippage_per_side, commission_price_equivalent)
+    costs = (spread_price, slippage_per_side)
     if not all(math.isfinite(float(value)) for value in costs):
         raise ValueError("Execution costs must be finite.")
     if any(value < 0 for value in costs):
@@ -329,11 +325,28 @@ def run_backtest(
 
     validate_candles(candles)
 
-    # Calculate every signal opportunity independently of open trades.
+    using_default_start = signal_start_index is None
+
+    if using_default_start:
+        signal_start_index = MIN_CANDLES - 1
+
+    if (
+        not isinstance(signal_start_index, int)
+        or isinstance(signal_start_index, bool)
+        or signal_start_index < MIN_CANDLES - 1
+        or (
+            not using_default_start
+            and signal_start_index >= len(candles) - 1
+        )
+    ):
+        raise ValueError("signal_start_index is outside the valid signal range.")
+
+    # Earlier candles provide indicator warm-up history.
+    # Only signals from the requested evaluation period are counted.
     signal_history = []
     all_counts = {"BUY": 0, "SELL": 0, "WAIT": 0}
 
-    for i in range(MIN_CANDLES - 1, len(candles) - 1):
+    for i in range(signal_start_index, len(candles) - 1):
         history = candles[max(0, i - LOOKBACK_CANDLES + 1):i + 1]
 
         try:
@@ -399,7 +412,6 @@ def run_backtest(
                 exit_price=outcome["exit"],
                 spread_price=spread_price,
                 slippage_per_side=slippage_per_side,
-                commission_price_equivalent=commission_price_equivalent,
             )
 
             trades.append({
@@ -438,15 +450,12 @@ def run_backtest(
                 "price_basis": price_basis or "UNCONFIGURED",
                 "spread_price": spread_price,
                 "slippage_per_side": slippage_per_side,
-                "commission_price_equivalent": commission_price_equivalent,
                 "status": "CONFIGURED" if any(value > 0 for value in costs) else "DISABLED",
                 "execution_model": "MID_OHLC_WITH_ADVERSE_ENTRY_EXIT_ADJUSTMENTS",
                 "trigger_model": "MID_OHLC_STOP_TARGET_TRIGGERS",
                 "limitations": (
                     "Historical Bid/Ask OHLC is unavailable. Stop and target triggers "
-                    "use MID OHLC; spread and slippage adjust execution prices. "
-                    "Commission is a configurable price-equivalent assumption, "
-                    "not a verified broker fee."
+                    "use MID OHLC; spread and slippage adjust execution prices."
                 ),
             },
         },

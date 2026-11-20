@@ -214,7 +214,7 @@ def test_technical_analysis_returns_wait_without_price_levels_when_stale(monkeyp
     assert "stale" in data["message"].lower()
 
 
-def test_combined_analysis_keeps_wait_when_market_data_is_stale(monkeypatch):
+def test_combined_analysis_returns_no_trade_when_market_data_is_stale(monkeypatch):
     from backend import main
 
     mock_stale_market_data(monkeypatch)
@@ -233,16 +233,18 @@ def test_combined_analysis_keeps_wait_when_market_data_is_stale(monkeypatch):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["signal"] == "WAIT"
-    assert data["technical_candidate"] == "WAIT"
+    assert data["signal"] == "NO TRADE"
+    assert data["technical_candidate"] == "NO TRADE"
     assert data["market_data_status"] == "STALE"
     assert data["broker_orders_enabled"] is False
-    assert "entry" not in data
-    assert "stop" not in data
-    assert "target1" not in data
+    assert data["entry"] is None
+    assert data["stop"] is None
+    assert data["target1"] is None
+    assert data["target2"] is None
+    assert data["target3"] is None
 
 
-def test_combined_analysis_never_returns_actionable_signal_or_price_levels(monkeypatch):
+def test_combined_analysis_returns_buy_signal_and_price_levels_when_valid(monkeypatch):
     from backend import main, indicators
 
     monkeypatch.setattr(
@@ -292,12 +294,12 @@ def test_combined_analysis_never_returns_actionable_signal_or_price_levels(monke
 
     assert response.status_code == 200
     data = response.json()
-    assert data["signal"] == "WAIT"
+    assert data["signal"] == "BUY"
     assert data["technical_candidate"] == "BUY"
     assert data["market_data_status"] == "FRESH"
     assert data["broker_orders_enabled"] is False
-    assert "entry" not in data
-    assert "stop" not in data
-    assert "target1" not in data
-    assert "target2" not in data
-    assert "target3" not in data
+    assert data["entry"] == 1.15
+    assert data["stop"] == 1.10
+    assert data["target1"] == 1.20
+    assert data["target2"] == 1.25
+    assert data["target3"] == 1.30

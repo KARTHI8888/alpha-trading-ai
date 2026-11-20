@@ -4,7 +4,7 @@ const translations = {
     workspace: "CHART ANALYSIS WORKSPACE",
     title: "Trade with a clearer view.",
     subtitle: "Upload a chart screenshot to prepare an analysis request.",
-    disclaimer: "Local AI is available. Live indicators are available only for supported symbols. Signal remains WAIT; no verified trading signal is provided.",
+    disclaimer: "Local AI is available. Live indicators are available only for supported symbols. Signal is NO TRADE until a verified trading setup is available.",
     setup: "Set up your chart",
     manual: "MANUAL INPUT",
     market: "Market",
@@ -19,7 +19,7 @@ const translations = {
     apiAddress: "Backend API address",
     analyze: "Request placeholder analysis",
     result: "Analysis result",
-    waitNote: "No verified chart analysis is available. WAIT is the safe placeholder state.",
+    waitNote: "No verified trading setup is available. NO TRADE is the safe state.",
     entry: "Entry Price",
     stop: "Stop Loss",
     target1: "Target 1",
@@ -28,7 +28,7 @@ const translations = {
     notConnected: "Market data and analysis: not connected",
     planned: "Planned analysis tools",
     options: "CE BUY / PE BUY",
-    plannedNote: "Forex/Gold indicators: EMA 9/21, DEMA 9, RSI 14, MACD, VWAP, Bollinger Bands, Supertrend, ATR 14, Support and Resistance. Trading signals are not verified; WAIT is shown.",
+    plannedNote: "Forex/Gold indicators: EMA 9/21, DEMA 9, RSI 14, MACD, VWAP, Bollinger Bands, Supertrend, ATR 14, Support and Resistance. Trading signals are not verified; NO TRADE is shown.",
     backtestTitle: "Historical Backtest Dashboard",
     backtestIntro: "Historical strategy results. Not a live trading signal.",
     backtestTimeframe: "Backtest timeframe",
@@ -52,7 +52,7 @@ const translations = {
     unsupportedImage: "Choose a PNG, JPEG, GIF, or WebP image.",
     missingApi: "Enter the backend API address.",
     sending: "Running local SmolVLM vision model…",
-    success: "Local AI image processing completed. Signal remains WAIT.",
+    success: "Local AI image processing completed. No verified trading signal is available.",
     visionResult: "Local AI image description:",
     error400: "The image is empty or the request is invalid (HTTP 400).",
     error413: "The image exceeds the 10 MiB upload or safe image-decoding limit (HTTP 413).",
@@ -65,7 +65,7 @@ const translations = {
     workspace: "விளக்கப்படப் பகுப்பாய்வுப் பணியிடம்",
     title: "தெளிவான பார்வையுடன் செயல்படுங்கள்.",
     subtitle: "பகுப்பாய்வு கோரிக்கைக்காக விளக்கப்படப் படத்தைப் பதிவேற்றவும்.",
-    disclaimer: "Local AI செயல்படத் தயாராக உள்ளது. ஆதரிக்கப்படும் சந்தைகளுக்கு மட்டும் Live Indicators கிடைக்கும். சரிபார்க்கப்பட்ட வர்த்தகச் சிக்னல் இல்லை; எனவே நிலை WAIT.",
+    disclaimer: "Local AI செயல்படத் தயாராக உள்ளது. ஆதரிக்கப்படும் சந்தைகளுக்கு மட்டும் Live Indicators கிடைக்கும். சரிபார்க்கப்பட்ட வர்த்தக அமைப்பு இல்லை; எனவே NO TRADE.",
     setup: "விளக்கப்படத்தை அமைக்கவும்",
     manual: "கைமுறை உள்ளீடு",
     market: "சந்தை",
@@ -80,7 +80,7 @@ const translations = {
     apiAddress: "Backend API முகவரி",
     analyze: "மாதிரி பகுப்பாய்வைக் கோரவும்",
     result: "பகுப்பாய்வு முடிவு",
-    waitNote: "சரிபார்க்கப்பட்ட விளக்கப்படப் பகுப்பாய்வு கிடைக்கவில்லை. WAIT என்பது பாதுகாப்பான மாதிரி நிலை.",
+    waitNote: "சரிபார்க்கப்பட்ட வர்த்தக அமைப்பு கிடைக்கவில்லை. NO TRADE என்பது பாதுகாப்பான நிலை.",
     entry: "நுழைவு விலை",
     stop: "இழப்பு நிறுத்தம்",
     target1: "இலக்கு 1",
@@ -89,7 +89,7 @@ const translations = {
     notConnected: "சந்தைத் தரவும் பகுப்பாய்வும்: இணைக்கப்படவில்லை",
     planned: "திட்டமிடப்பட்ட பகுப்பாய்வுக் கருவிகள்",
     options: "CE BUY / PE BUY",
-    plannedNote: "Forex/Gold குறியீடுகள்: EMA 9/21, DEMA 9, RSI 14, MACD, VWAP, Bollinger Bands, Supertrend, ATR 14, Support மற்றும் Resistance. Trading signal உறுதிப்படுத்தப்படவில்லை; WAIT காட்டப்படும்.",
+    plannedNote: "Forex/Gold குறியீடுகள்: EMA 9/21, DEMA 9, RSI 14, MACD, VWAP, Bollinger Bands, Supertrend, ATR 14, Support மற்றும் Resistance. Trading signal உறுதிப்படுத்தப்படவில்லை; NO TRADE காட்டப்படும்.",
     backtestTitle: "வரலாற்று Backtest Dashboard",
     backtestIntro: "வரலாற்று உத்தி முடிவுகள். இது Live Trading Signal அல்ல.",
     backtestTimeframe: "Backtest கால அளவு",
@@ -113,7 +113,7 @@ const translations = {
     unsupportedImage: "PNG, JPEG, GIF அல்லது WebP படத்தைத் தேர்ந்தெடுக்கவும்.",
     missingApi: "Backend API முகவரியை உள்ளிடவும்.",
     sending: "Local SmolVLM AI படத்தைப் பகுப்பாய்வு செய்கிறது…",
-    success: "Local AI படச் செயலாக்கம் முடிந்தது. Signal WAIT நிலையில் உள்ளது.",
+    success: "Local AI படச் செயலாக்கம் முடிந்தது. சரிபார்க்கப்பட்ட Trading Signal கிடைக்கவில்லை.",
     visionResult: "Local AI பட விளக்கம்:",
     error400: "படம் காலியாக உள்ளது அல்லது கோரிக்கை தவறானது (HTTP 400).",
     error413: "படம் 10 MiB பதிவேற்ற அல்லது பாதுகாப்பான பட-decoding வரம்பை மீறுகிறது (HTTP 413).",
@@ -222,7 +222,7 @@ async function loadBacktestResults() {
       costs.status === "ENABLED" ? language.costsEnabled : "—";
 
     $("bt-cost-details").textContent =
-      `Spread: ${fmt(costs.spread_price, 4)} · Slippage/side: ${fmt(costs.slippage_per_side, 4)} · Commission: ${fmt(costs.commission_price_equivalent, 4)}. ${costs.limitations || ""}`;
+      `Spread: ${fmt(costs.spread_price, 4)} · Slippage/side: ${fmt(costs.slippage_per_side, 4)}. ${costs.limitations || ""}`;
 
     const tbody = $("backtest-trades-body");
     tbody.replaceChildren();
@@ -286,10 +286,10 @@ async function loadLiveIndicators() {
   const symbol = $("market").value;
   const interval = $("timeframe").value;
 
-  function resetResult(message = "WAIT") {
-    $("signal").textContent = "WAIT";
-    $("signal").dataset.status = "WAIT";
-    $("signal-status").textContent = "WAIT";
+  function resetResult(message = "NO TRADE") {
+    $("signal").textContent = "NO TRADE";
+    $("signal").dataset.status = "NO TRADE";
+    $("signal-status").textContent = "NO TRADE";
     resultIds.forEach((id) => { $(id).textContent = "—"; });
     $("result-note").textContent = message;
 
@@ -305,7 +305,7 @@ async function loadLiveIndicators() {
     $("live-ai-status").textContent = "UNSUPPORTED";
     note.textContent = "Live analysis is not supported for " + symbol + ".";
     indicatorIds.forEach((id) => { $(id).textContent = "—"; });
-    resetResult("WAIT — Market not supported by the live analysis API.");
+    resetResult("NO TRADE — Market not supported by the live analysis API.");
     return;
   }
 
@@ -314,7 +314,7 @@ async function loadLiveIndicators() {
     status.textContent = "ERROR";
     $("live-ai-status").textContent = "ERROR";
     note.textContent = "Enter the backend API address.";
-    resetResult("WAIT — Backend API address is missing.");
+    resetResult("NO TRADE — Backend API address is missing.");
     return;
   }
 
@@ -352,7 +352,7 @@ async function loadLiveIndicators() {
     for (const id of indicatorIds) {
       const map = {"macd-signal":values.macd_signal,"bb-upper":values.bb_upper,"bb-middle":values.bb_middle,"bb-lower":values.bb_lower,"supertrend":st.value,"supertrend-trend":st.trend,"atr14":levels.atr14,"support":levels.support,"resistance":levels.resistance};
       const value = Object.prototype.hasOwnProperty.call(map,id) ? map[id] : values[id];
-      $(id).textContent = Number.isFinite(value) ? value.toFixed(4) : (id === "supertrend-trend" ? (value || "WAIT") : "—");
+      $(id).textContent = Number.isFinite(value) ? value.toFixed(4) : (id === "supertrend-trend" ? (value === "WAIT" ? "NO TRADE" : (value || "—")) : "—");
     }
 
     const conditionGroups = [
@@ -389,15 +389,6 @@ async function loadLiveIndicators() {
       }
     }
 
-    const allowedSignals = ["BUY", "SELL", "WAIT"];
-    const signal = data.status === "FRESH" && allowedSignals.includes(data.signal)
-      ? data.signal
-      : "WAIT";
-
-    $("signal").textContent = signal;
-    $("signal").dataset.status = signal;
-    $("signal-status").textContent = signal;
-
     const resultValues = {
       entry: data.entry,
       stop: data.stop,
@@ -406,17 +397,45 @@ async function loadLiveIndicators() {
       target3: data.target3
     };
 
+    const allLevelsPositive = Object.values(resultValues).every(
+      (value) => Number.isFinite(value) && value > 0
+    );
+
+    const levelsOrdered = data.signal === "BUY"
+      ? resultValues.stop < resultValues.entry &&
+        resultValues.entry < resultValues.target1 &&
+        resultValues.target1 < resultValues.target2 &&
+        resultValues.target2 < resultValues.target3
+      : data.signal === "SELL"
+        ? resultValues.stop > resultValues.entry &&
+          resultValues.entry > resultValues.target1 &&
+          resultValues.target1 > resultValues.target2 &&
+          resultValues.target2 > resultValues.target3
+        : false;
+
+    const levelsValid = allLevelsPositive && levelsOrdered;
+
+    const signal = data.status === "FRESH" &&
+      ["BUY", "SELL"].includes(data.signal) &&
+      levelsValid
+        ? data.signal
+        : "NO TRADE";
+
+    $("signal").textContent = signal;
+    $("signal").dataset.status = signal;
+    $("signal-status").textContent = signal;
+
     for (const id of resultIds) {
       const value = resultValues[id];
       $(id).textContent =
-        signal !== "WAIT" && Number.isFinite(value) ? value.toFixed(4) : "—";
+        signal !== "NO TRADE" && Number.isFinite(value) ? value.toFixed(4) : "—";
     }
 
     const levelText = Number.isFinite(levels.atr14)
       ? ` · ATR: ${levels.atr14.toFixed(4)}` : "";
 
-    $("result-note").textContent = signal === "WAIT"
-      ? (data.message || "WAIT — Trading conditions are not sufficiently aligned.")
+    $("result-note").textContent = signal === "NO TRADE"
+      ? (data.message || "NO TRADE — Trading conditions are not sufficiently aligned.")
       : `${data.message || signal} · Experimental rule-based signal; not a guarantee of profit.`;
 
     note.textContent =
@@ -427,7 +446,7 @@ async function loadLiveIndicators() {
     $("live-ai-status").textContent = "ERROR";
     note.textContent = error.message || "Could not load technical analysis.";
     indicatorIds.forEach((id) => { $(id).textContent = "—"; });
-    resetResult("WAIT — Technical analysis could not be loaded.");
+    resetResult("NO TRADE — Technical analysis could not be loaded.");
   }
 }
 
@@ -565,7 +584,7 @@ $("analyze").addEventListener("click", async () => {
   setRequestMessage("sending");
 
   try {
-    const response = await fetch(`${base}/analyze?${query}`, {
+    const response = await fetch(`${base}/combined-analysis?${query}`, {
       method: "POST",
       headers: { "Content-Type": selectedFile.type },
       body: selectedFile,
@@ -583,8 +602,125 @@ $("analyze").addEventListener("click", async () => {
     const data = await response.json();
     visionDescription = data.vision_description || data.message || currentLanguage().success;
     hasAnalysisResponse = true;
+
     $("vision-insight").textContent = `${currentLanguage().visionResult} ${visionDescription}`;
     $("vision-insight").hidden = false;
+
+    const tradeLevels = {
+      entry: data.entry,
+      stop: data.stop,
+      target1: data.target1,
+      target2: data.target2,
+      target3: data.target3
+    };
+
+    const allLevelsPositive = Object.values(tradeLevels).every(
+      (value) => Number.isFinite(value) && value > 0
+    );
+
+    const levelsOrdered = data.signal === "BUY"
+      ? tradeLevels.stop < tradeLevels.entry &&
+        tradeLevels.entry < tradeLevels.target1 &&
+        tradeLevels.target1 < tradeLevels.target2 &&
+        tradeLevels.target2 < tradeLevels.target3
+      : data.signal === "SELL"
+        ? tradeLevels.stop > tradeLevels.entry &&
+          tradeLevels.entry > tradeLevels.target1 &&
+          tradeLevels.target1 > tradeLevels.target2 &&
+          tradeLevels.target2 > tradeLevels.target3
+        : false;
+
+    const signal = ["BUY", "SELL"].includes(data.signal) &&
+      data.market_data_status === "FRESH" &&
+      allLevelsPositive &&
+      levelsOrdered
+        ? data.signal
+        : "NO TRADE";
+
+    $("signal").textContent = signal;
+    $("signal").dataset.status = signal;
+    $("signal-status").textContent = signal;
+
+    for (const [id, value] of Object.entries(tradeLevels)) {
+      $(id).textContent = signal !== "NO TRADE" && Number.isFinite(value)
+        ? value.toFixed(4) : "—";
+    }
+
+    const values = data.indicators || {};
+    const levels = data.levels || {};
+    const st = data.supertrend || {};
+    const volume = data.volume_analysis || {};
+
+    const indicatorValues = {
+      "ema9": values.ema9,
+      "ema21": values.ema21,
+      "dema9": values.dema9,
+      "rsi": values.rsi,
+      "macd": values.macd,
+      "macd-signal": values.macd_signal,
+      "vwap": values.vwap,
+      "bb-upper": values.bb_upper,
+      "bb-middle": values.bb_middle,
+      "bb-lower": values.bb_lower,
+      "supertrend": st.value,
+      "supertrend-trend": st.trend === "WAIT" ? "NO TRADE" : st.trend,
+      "atr14": levels.atr14,
+      "support": levels.support,
+      "resistance": levels.resistance
+    };
+
+    for (const [id, value] of Object.entries(indicatorValues)) {
+      const element = $(id);
+      if (element) {
+        element.textContent = Number.isFinite(value)
+          ? value.toFixed(4) : (value || "—");
+      }
+    }
+
+    $("latest-tick-volume").textContent =
+      Number.isFinite(volume.latest_tick_volume) ? volume.latest_tick_volume.toFixed(2) : "—";
+    $("average-tick-volume").textContent =
+      Number.isFinite(volume.average_tick_volume) ? volume.average_tick_volume.toFixed(2) : "—";
+    $("required-tick-volume").textContent =
+      Number.isFinite(volume.required_tick_volume) ? volume.required_tick_volume.toFixed(2) : "—";
+
+    $("volume-confirmation").textContent = volume.confirmation || "—";
+    $("volume-confirmation").dataset.status = volume.confirmation || "UNKNOWN";
+
+    for (const group of [
+      { name: "buy", checks: data.buy_checks || {}, score: data.buy_score },
+      { name: "sell", checks: data.sell_checks || {}, score: data.sell_score }
+    ]) {
+      const scoreElement = $(`${group.name}-score`);
+      if (scoreElement) {
+        scoreElement.textContent = Number.isFinite(group.score) ? `${group.score} / 8` : "— / 8";
+      }
+
+      const percentElement = $(`${group.name}-percent`);
+      const progressElement = $(`${group.name}-progress`);
+      if (percentElement && progressElement) {
+        const valid = Number.isFinite(group.score);
+        const percent = valid ? Math.round(Math.max(0, Math.min(8, group.score)) / 8 * 100) : 0;
+        percentElement.textContent = valid ? `${percent}%` : "—%";
+        progressElement.style.width = `${percent}%`;
+        progressElement.dataset.status = !valid ? "UNKNOWN" : percent >= 75 ? "PASS" : "FAIL";
+      }
+
+      for (const [key, passed] of Object.entries(group.checks)) {
+        const element = $(`${group.name}-${key}`);
+        if (element) {
+          element.textContent = passed ? "PASS" : "FAIL";
+          element.dataset.status = passed ? "PASS" : "FAIL";
+        }
+      }
+    }
+
+    $("market-status").textContent = data.market_data_status || "UNKNOWN";
+    $("live-ai-status").textContent = data.analysis_connected ? "CONNECTED" : "ERROR";
+    $("result-note").textContent = data.message || signal;
+    $("market-data-note").textContent =
+      `Latest candle: ${data.latest_candle || "unknown"} · Age: ${data.age_minutes ?? "?"} min`;
+
     setRequestMessage("success");
   } catch {
     setRequestMessage("networkError");

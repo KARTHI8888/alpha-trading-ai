@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 import warnings
+import math
 from pathlib import Path
 from enum import Enum
 from io import BytesIO
@@ -95,8 +96,13 @@ class AnalysisResponse(BaseModel):
 
 
 class CombinedAnalysisResponse(BaseModel):
-    signal: Literal["WAIT"] = "WAIT"
-    technical_candidate: Literal["BUY", "SELL", "WAIT"]
+    signal: Literal["BUY", "SELL", "NO TRADE"] = "NO TRADE"
+    technical_candidate: Literal["BUY", "SELL", "NO TRADE"]
+    entry: float | None = None
+    stop: float | None = None
+    target1: float | None = None
+    target2: float | None = None
+    target3: float | None = None
     market: Market
     timeframe: Timeframe
     market_data_status: Literal["FRESH", "STALE"]
@@ -546,17 +552,62 @@ async def combined_analysis(
         ) from exc
 
     technical_candidate = (
-        result.get("signal", "WAIT")
+        result.get("signal", "NO TRADE")
         if market_data["fresh"]
-        else "WAIT"
+        else "NO TRADE"
     )
 
-    if technical_candidate not in {"BUY", "SELL", "WAIT"}:
-        technical_candidate = "WAIT"
+    trade_levels = {
+        "entry": result.get("entry"),
+        "stop": result.get("stop"),
+        "target1": result.get("target1"),
+        "target2": result.get("target2"),
+        "target3": result.get("target3"),
+    }
+
+    levels_valid = all(
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+        and value > 0
+        for value in trade_levels.values()
+    )
+
+    if technical_candidate == "BUY":
+        levels_ordered = (
+            levels_valid
+            and trade_levels["stop"] < trade_levels["entry"]
+            < trade_levels["target1"] < trade_levels["target2"]
+            < trade_levels["target3"]
+        )
+    elif technical_candidate == "SELL":
+        levels_ordered = (
+            levels_valid
+            and trade_levels["stop"] > trade_levels["entry"]
+            > trade_levels["target1"] > trade_levels["target2"]
+            > trade_levels["target3"]
+        )
+    else:
+        levels_ordered = False
+
+    actionable = (
+        market_data["fresh"]
+        and technical_candidate in {"BUY", "SELL"}
+        and levels_valid
+        and levels_ordered
+    )
+
+    signal = technical_candidate if actionable else "NO TRADE"
+    technical_candidate = signal
 
     return CombinedAnalysisResponse(
-        signal="WAIT",
+        signal=signal,
         technical_candidate=technical_candidate,
+        entry=result.get("entry") if actionable else None,
+        stop=result.get("stop") if actionable else None,
+        target1=result.get("target1") if actionable else None,
+        target2=result.get("target2") if actionable else None,
+        target3=result.get("target3") if actionable else None,
         market=market,
         timeframe=timeframe,
         market_data_status="FRESH" if market_data["fresh"] else "STALE",
@@ -577,9 +628,11 @@ async def combined_analysis(
         sell_checks=result.get("sell_checks", {}),
         broker_orders_enabled=False,
         message=(
-            "Vision is descriptive only. Technical candidate is experimental "
-            "and non-actionable. Final signal remains WAIT. "
-            "No Entry, Stop Loss, or Targets are provided."
+            "Fresh market data and technical rules confirm an experimental signal. "
+            "This is not a guarantee of profit."
+            if actionable
+            else "NO TRADE: A validated BUY or SELL setup is not available. "
+                 "Check market data freshness and indicator confirmations."
         ),
     )
 
