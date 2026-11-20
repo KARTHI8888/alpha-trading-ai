@@ -22,7 +22,7 @@ jobs:
         with:
           gradle-version: 8.11.1
       - name: Build APK
-        run: ./gradlew -p android assembleDebug
+        run: ./android/gradlew -p android assembleDebug
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
