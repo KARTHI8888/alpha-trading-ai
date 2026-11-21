@@ -1,5 +1,6 @@
 """Multi-timeframe historical backtest runner."""
 
+import hashlib
 import json
 import os
 from urllib.request import Request, urlopen
@@ -58,6 +59,17 @@ def fetch_historical_candles(interval: str) -> list[dict]:
     return candles
 
 
+def calculate_candle_data_hash(candles: list[dict]) -> str:
+    """Return a deterministic SHA-256 fingerprint of the candle dataset."""
+    canonical_data = json.dumps(
+        candles,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical_data).hexdigest()
+
+
 def main():
     report_dir = Path("reports")
     report_dir.mkdir(exist_ok=True)
@@ -81,6 +93,7 @@ def main():
                 "first_candle": candles[0]["openTime"],
                 "last_candle": candles[-1]["openTime"],
                 "generated_at": datetime.now(timezone.utc).isoformat(),
+                "candle_data_sha256": calculate_candle_data_hash(candles),
                 **result,
             }
 

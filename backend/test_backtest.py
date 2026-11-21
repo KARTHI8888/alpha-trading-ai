@@ -250,3 +250,70 @@ def test_run_backtest_rejects_invalid_signal_start_index():
 
     with pytest.raises(ValueError, match="signal_start_index"):
         run_backtest(candles, signal_start_index=39)
+
+
+
+def test_simulate_trade_records_exit_timestamp_and_reason():
+    from backend.backtest import simulate_trade
+
+    candles = [
+        {
+            "openTime": "2026-11-21T09:00:00Z",
+            "open": 2000.0,
+            "high": 2001.5,
+            "low": 1999.5,
+            "close": 2001.0,
+            "volume": 100.0,
+        }
+    ]
+
+    result = simulate_trade(candles, 0, "BUY", 2000.0, 1.0)
+
+    assert result["target1"]["outcome"] == "TARGET"
+    assert result["target1"]["exit_time"] == "2026-11-21T09:00:00Z"
+    assert result["target1"]["exit_reason"] == "TARGET"
+
+
+def test_simulate_trade_records_open_exit_timestamp():
+    from backend.backtest import simulate_trade
+
+    candles = [
+        {
+            "openTime": "2026-11-21T09:00:00Z",
+            "open": 2000.0,
+            "high": 2000.5,
+            "low": 1999.5,
+            "close": 2000.25,
+            "volume": 100.0,
+        }
+    ]
+
+    result = simulate_trade(candles, 0, "BUY", 2000.0, 1.0)
+
+    assert result["target1"]["outcome"] == "OPEN"
+    assert result["target1"]["exit_time"] == "2026-11-21T09:00:00Z"
+    assert result["target1"]["exit_reason"] == "OPEN"
+
+
+def test_candle_data_hash_is_deterministic():
+    from backend.run_backtest import calculate_candle_data_hash
+
+    candles = [
+        {
+            "openTime": "2026-11-21T09:00:00Z",
+            "open": 2000.0,
+            "high": 2002.0,
+            "low": 1999.0,
+            "close": 2001.0,
+            "volume": 100.0,
+        }
+    ]
+
+    first_hash = calculate_candle_data_hash(candles)
+    second_hash = calculate_candle_data_hash(candles)
+
+    assert len(first_hash) == 64
+    assert first_hash == second_hash
+
+    changed = [dict(candles[0], close=2001.5)]
+    assert calculate_candle_data_hash(changed) != first_hash

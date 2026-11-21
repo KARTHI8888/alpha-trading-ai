@@ -222,6 +222,8 @@ def simulate_trade(
             "exit": round(exit_price, 6),
             "pnl": round(pnl, 6),
             "exit_index": exit_index,
+            "exit_time": candles[exit_index].get("openTime"),
+            "exit_reason": outcome,
             "target_price": round(target_price, 6),
             "stop_price": round(levels["stop"], 6),
         }
